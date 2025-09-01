@@ -46,7 +46,14 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
     return union.logoPath
   }
 
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount)
+  }
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '')
     const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/)

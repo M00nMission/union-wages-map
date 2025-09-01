@@ -30,6 +30,16 @@ const getUnionLogoPath = (union: Union): string => {
   return union.logoPath
 }
 
+// Helper function to format currency with proper commas
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount)
+}
+
 interface UnionMapProps {
   unions: Union[]
 }
@@ -107,7 +117,7 @@ export function UnionMap({ unions }: UnionMapProps) {
         </Card>
         <Card className="p-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">${statistics.avgWage}/hr</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(statistics.avgWage)}/hr</div>
             <div className="text-sm text-slate-600">Avg. Base Wage</div>
           </div>
         </Card>
@@ -119,7 +129,7 @@ export function UnionMap({ unions }: UnionMapProps) {
         </Card>
         <Card className="p-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">${statistics.avgBenefits}/hr</div>
+            <div className="text-2xl font-bold text-orange-600">{formatCurrency(statistics.avgBenefits)}/hr</div>
             <div className="text-sm text-slate-600">Avg. Benefits</div>
           </div>
         </Card>
@@ -204,7 +214,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                   fontWeight: '600'
                                 }}
                               >
-                                ${union.baseWage.toFixed(2)}/hr
+                                {formatCurrency(union.baseWage)}/hr
                               </text>
                               
                               {/* City Label */}
@@ -236,7 +246,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                 <p className="text-sm text-slate-600">{union.city}, {union.state}</p>
                                 <div className="flex items-center gap-4 mt-1">
                                   <span className="text-sm font-medium text-green-600">
-                                    ${union.baseWage.toFixed(2)}/hr
+                                    {formatCurrency(union.baseWage)}/hr
                                   </span>
                                   <span className="text-xs text-slate-500">
                                     {union.members.toLocaleString()} members
@@ -248,11 +258,11 @@ export function UnionMap({ unions }: UnionMapProps) {
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
                                 <span className="text-slate-500">Benefits:</span>
-                                <span className="font-medium ml-1">${union.fringeBenefits}/hr</span>
+                                <span className="font-medium ml-1">{formatCurrency(union.fringeBenefits)}/hr</span>
                               </div>
                               <div>
                                 <span className="text-slate-500">Total:</span>
-                                <span className="font-medium ml-1">${union.totalPackage}/hr</span>
+                                <span className="font-medium ml-1">{formatCurrency(union.totalPackage)}/hr</span>
                               </div>
                             </div>
                             
@@ -371,15 +381,15 @@ export function UnionMap({ unions }: UnionMapProps) {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600 text-sm">Base Wage:</span>
-                    <span className="font-semibold text-green-600">${union.baseWage.toFixed(2)}/hr</span>
+                    <span className="font-semibold text-green-600">{formatCurrency(union.baseWage)}/hr</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600 text-sm">Benefits:</span>
-                    <span className="font-semibold text-blue-600">${union.fringeBenefits}/hr</span>
+                    <span className="font-semibold text-blue-600">{formatCurrency(union.fringeBenefits)}/hr</span>
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100">
                     <span className="text-slate-600 text-sm">Total Package:</span>
-                    <span className="font-bold text-purple-600">${union.totalPackage}/hr</span>
+                    <span className="font-bold text-purple-600">{formatCurrency(union.totalPackage)}/hr</span>
                   </div>
                   <div className="flex items-center gap-1 pt-1">
                     <Users size={12} className="text-slate-400" />
