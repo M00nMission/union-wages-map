@@ -30,13 +30,13 @@ const getUnionLogoPath = (union: Union): string => {
   return union.logoPath
 }
 
-// Helper function to format currency with proper commas
+// Helper function to format currency with proper commas (no cents)
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(amount)
 }
 
