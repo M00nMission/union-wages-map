@@ -1,14 +1,14 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { Union, UnionTrade, MapCoordinates, UnionFilters as UnionFiltersType } from '@/types/union'
+import { Union, MapCoordinates, UnionFilters as UnionFiltersType } from '@/types/union'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { UnionModal } from '@/components/union-modal'
 import { UnionFilters } from '@/components/union-filters'
-import { MapPin, DollarSign, Users, Building2, TrendingUp, Filter } from 'lucide-react'
+import { MapPin, DollarSign, Users, Building2, TrendingUp } from 'lucide-react'
 
 interface UnionMapProps {
   unions: Union[]

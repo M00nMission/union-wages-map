@@ -33,10 +33,6 @@ export function UnionFilters({ filters, onFiltersChange, unions }: UnionFiltersP
     const states = [...new Set(unions.map(union => union.state))].sort()
     const trades = [...new Set(unions.map(union => union.trade))].sort()
     
-    const wages = unions.map(union => union.baseWage).sort((a, b) => a - b)
-    const minWage = Math.floor(wages[0] / 5) * 5 // Round down to nearest 5
-    const maxWage = Math.ceil(wages[wages.length - 1] / 5) * 5 // Round up to nearest 5
-    
     const ranges = [
       { label: 'Under $30/hr', min: 0, max: 30 },
       { label: '$30 - $40/hr', min: 30, max: 40 },
@@ -62,7 +58,7 @@ export function UnionFilters({ filters, onFiltersChange, unions }: UnionFiltersP
   }
 
   // Update specific filter
-  const updateFilter = (key: keyof UnionFilters, value: any) => {
+  const updateFilter = (key: keyof UnionFilters, value: UnionTrade | string | number | undefined) => {
     onFiltersChange({
       ...filters,
       [key]: value === 'all' ? undefined : value
