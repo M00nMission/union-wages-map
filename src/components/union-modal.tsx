@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Union } from '@/types/union'
+import { Union, UnionTrade } from '@/types/union'
 import { 
   Dialog, 
   DialogContent, 
@@ -36,6 +36,16 @@ interface UnionModalProps {
 export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
   if (!union) return null
 
+  // Helper function to get the correct logo path
+  const getUnionLogoPath = (union: Union): string => {
+    // Use IBEW logo for all electrical unions
+    if (union.trade === UnionTrade.ELECTRICAL) {
+      return '/union-logos/ibew-logo.png'
+    }
+    // Use the specified logo path for other unions
+    return union.logoPath
+  }
+
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '')
@@ -52,7 +62,7 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
         <DialogHeader>
           <div className="flex items-start gap-4 mb-4">
             <img 
-              src={union.logoPath} 
+              src={getUnionLogoPath(union)} 
               alt={union.name}
               className="w-16 h-16 rounded-lg object-cover bg-slate-100 flex-shrink-0"
               onError={(e) => {

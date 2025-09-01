@@ -1,13 +1,13 @@
-# Union Wages Map
+# IBEW Electrician Wages Map
 
-An interactive web application that displays labor union wages and benefits across the United States. Built with Next.js, TypeScript, and Tailwind CSS.
+An interactive web application that displays IBEW electrician wages and benefits across the United States. Built with Next.js, TypeScript, and Tailwind CSS.
 
 ## Features
 
 - **Interactive USA Map**: Clean, realistic map using react-simple-maps with proper state boundaries
-- **Union Data Visualization**: Color-coded markers showing wage levels across different locations
-- **Advanced Filtering**: Filter by trade type, state, and wage ranges
-- **Detailed Union Information**: Hover cards and modal dialogs with comprehensive union details
+- **IBEW Data Visualization**: Color-coded markers showing electrician wage levels across different locations
+- **Advanced Filtering**: Filter by state and wage ranges
+- **Detailed IBEW Information**: Hover cards and modal dialogs with comprehensive union details
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 - **Real-time Statistics**: Dynamic calculations based on filtered data
 
@@ -17,7 +17,7 @@ The map uses [react-simple-maps](https://github.com/zcreativelabs/react-simple-m
 - **USA TopoJSON Data**: High-quality geographic data from us-atlas
 - **Proper Projection**: Albers USA projection for accurate representation
 - **Interactive Features**: Zoom, pan, and hover interactions
-- **Color-coded Markers**: Wage levels represented by different colors
+- **Color-coded Markers**: IBEW wage levels represented by different colors
 - **Responsive Design**: Adapts to different screen sizes
 
 ## Tech Stack
@@ -64,12 +64,11 @@ src/
 
 ## Data Structure
 
-The application uses a comprehensive Union interface that includes:
-- Basic information (name, location, contact details)
+The application uses comprehensive IBEW data from [unionpayscales.com](https://unionpayscales.com/trades/ibew-electricians/) that includes:
+- Basic information (local name, location, contact details)
 - Wage data (base wage, fringe benefits, total package)
-- Trade classification and jurisdiction
-- Member count and establishment date
-- Benefits information
+- Geographic jurisdiction and establishment date
+- Member count and benefits information
 
 ## Contributing
 

@@ -5,12 +5,12 @@ import { Union } from '@/types/union'
 
 // This enables SSR with static generation
 export const metadata: Metadata = {
-  title: 'Union Wages Map - Labor Union Wages Across America',
-  description: 'Explore base wages and fringe benefits by labor union and location across the United States.',
-  keywords: 'union wages, labor union, fringe benefits, construction wages, trade unions',
+  title: 'IBEW Electrician Wages Map - Union Wages Across America',
+  description: 'Explore IBEW electrician wages and fringe benefits by location across the United States.',
+  keywords: 'IBEW, electrician wages, electrical union, fringe benefits, construction wages, trade unions',
   openGraph: {
-    title: 'Union Wages Map - Labor Union Wages Across America',
-    description: 'Explore base wages and fringe benefits by labor union and location across the United States.',
+    title: 'IBEW Electrician Wages Map - Union Wages Across America',
+    description: 'Explore IBEW electrician wages and fringe benefits by location across the United States.',
     type: 'website',
     url: 'https://your-domain.vercel.app',
   },
@@ -33,11 +33,11 @@ export default async function HomePage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-slate-900 mb-3">
-            Union Wages Across America
+            IBEW Electrician Wages Across America
           </h1>
           <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-            Explore base wages and fringe benefits by labor union and location. 
-            Interactive map showing current wage data for construction and trade unions.
+            Explore IBEW electrician wages and fringe benefits by location. 
+            Interactive map showing current wage data for electrical workers across the United States.
           </p>
         </div>
 
@@ -47,7 +47,7 @@ export default async function HomePage() {
         {/* Statistics Section */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Total Unions</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Total IBEW Locals</h3>
             <p className="text-3xl font-bold text-blue-600">{unions.length}</p>
           </div>
           

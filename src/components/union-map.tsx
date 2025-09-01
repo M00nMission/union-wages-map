@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { Union, UnionFilters as UnionFiltersType } from '@/types/union'
+import { Union, UnionFilters as UnionFiltersType, UnionTrade } from '@/types/union'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,16 @@ import {
 
 // USA TopoJSON data - simplified for better performance
 const geoUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"
+
+// Helper function to get the correct logo path
+const getUnionLogoPath = (union: Union): string => {
+  // Use IBEW logo for all electrical unions
+  if (union.trade === UnionTrade.ELECTRICAL) {
+    return '/union-logos/ibew-logo.png'
+  }
+  // Use the specified logo path for other unions
+  return union.logoPath
+}
 
 interface UnionMapProps {
   unions: Union[]
@@ -214,7 +224,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                           <div className="space-y-2">
                             <div className="flex items-start gap-3">
                               <img 
-                                src={union.logoPath} 
+                                src={getUnionLogoPath(union)} 
                                 alt={union.name}
                                 className="w-12 h-12 rounded-lg object-cover bg-slate-100"
                                 onError={(e) => {
@@ -327,7 +337,7 @@ export function UnionMap({ unions }: UnionMapProps) {
               <CardContent className="p-4">
                 <div className="flex items-start gap-3 mb-3">
                   <img 
-                    src={union.logoPath} 
+                    src={getUnionLogoPath(union)} 
                     alt={union.name}
                     className="w-12 h-12 rounded-lg object-cover bg-slate-100 flex-shrink-0"
                     onError={(e) => {
