@@ -88,12 +88,13 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
                 <Badge variant="outline">
                   {union.trade}
                 </Badge>
-                {union.established && (
+                {/* TODO: Add established year */}
+                {/* {union.established && (
                   <Badge variant="outline" className="flex items-center gap-1">
                     <Calendar size={12} />
                     Est. {union.established}
                   </Badge>
-                )}
+                )} */}
               </div>
               <DialogDescription className="text-slate-600 text-sm">
                 {union.description}
@@ -253,7 +254,7 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
           </div>
 
           {/* Benefits Information */}
-          {union.benefits && (
+          {/* {union.benefits && (
             <Card>
               <CardContent className="p-4">
                 <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -284,7 +285,7 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
         </div>
       </DialogContent>
     </Dialog>
