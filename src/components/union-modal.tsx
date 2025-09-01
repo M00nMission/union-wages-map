@@ -65,27 +65,27 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-2xl md:max-w-4xl max-h-[85vh] md:max-h-[90vh] overflow-y-auto mx-2">
         <DialogHeader>
-          <div className="flex items-start gap-4 mb-4">
+          <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
             <img 
               src={getUnionLogoPath(union)} 
               alt={union.name}
-              className="w-16 h-16 rounded-lg object-cover bg-slate-100 flex-shrink-0"
+              className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover bg-slate-100 flex-shrink-0"
               onError={(e) => {
                 e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMjAgMjBINDRWNDRIMjBWMjBaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'
               }}
             />
             <div className="flex-1 min-w-0">
-              <DialogTitle className="text-xl font-bold text-slate-900 mb-1 leading-tight">
+              <DialogTitle className="text-lg md:text-xl font-bold text-slate-900 mb-1 leading-tight">
                 {union.name}
               </DialogTitle>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <MapPin size={12} />
+              <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-2">
+                <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                  <MapPin size={10} className="md:w-3 md:h-3" />
                   {union.city}, {union.state}
                 </Badge>
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs">
                   {union.trade}
                 </Badge>
                 {/* TODO: Add established year */}
@@ -96,47 +96,47 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
                   </Badge>
                 )} */}
               </div>
-              <DialogDescription className="text-slate-600 text-sm">
+              <DialogDescription className="text-slate-600 text-xs md:text-sm">
                 {union.description}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {/* Wage Information */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             <Card className="border-green-200 bg-green-50">
-              <CardContent className="p-4">
+              <CardContent className="p-3 md:p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="text-green-600" size={20} />
-                  <span className="font-semibold text-green-800">Base Wage</span>
+                  <DollarSign className="text-green-600 md:w-5 md:h-5" size={18} />
+                  <span className="font-semibold text-green-800 text-sm md:text-base">Base Wage</span>
                 </div>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-xl md:text-2xl font-bold text-green-600">
                   {formatCurrency(union.baseWage)}/hr
                 </p>
               </CardContent>
             </Card>
             
             <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="p-4">
+              <CardContent className="p-3 md:p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Heart className="text-blue-600" size={20} />
-                  <span className="font-semibold text-blue-800">Fringe Benefits</span>
+                  <Heart className="text-blue-600 md:w-5 md:h-5" size={18} />
+                  <span className="font-semibold text-blue-800 text-sm md:text-base">Fringe Benefits</span>
                 </div>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-xl md:text-2xl font-bold text-blue-600">
                   {formatCurrency(union.fringeBenefits)}/hr
                 </p>
               </CardContent>
             </Card>
             
             <Card className="border-purple-200 bg-purple-50">
-              <CardContent className="p-4">
+              <CardContent className="p-3 md:p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="text-purple-600" size={20} />
-                  <span className="font-semibold text-purple-800">Total Package</span>
+                  <Building2 className="text-purple-600 md:w-5 md:h-5" size={18} />
+                  <span className="font-semibold text-purple-800 text-sm md:text-base">Total Package</span>
                 </div>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-xl md:text-2xl font-bold text-purple-600">
                   {formatCurrency(union.totalPackage)}/hr
                 </p>
               </CardContent>
@@ -145,12 +145,12 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
 
           {/* Annual Earnings Projection */}
           <Card>
-            <CardContent className="p-4">
-              <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Clock size={18} />
+            <CardContent className="p-3 md:p-4">
+              <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2 text-sm md:text-base">
+                <Clock size={16} className="md:w-[18px] md:h-[18px]" />
                 Annual Earnings (2,080 hours/year)
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-sm">
                 <div>
                   <span className="text-slate-600">Base Salary:</span>
                   <p className="text-lg font-semibold text-slate-900">
