@@ -48,6 +48,11 @@ export function UnionMap({ unions }: UnionMapProps) {
   const [selectedUnion, setSelectedUnion] = useState<Union | null>(null)
   const [hoveredUnion, setHoveredUnion] = useState<number | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [mapPosition, setMapPosition] = useState({
+    zoom: 1,
+    center: [-98.5795, 39.8283] as [number, number] // Center of USA
+  })
+  const [selectedState, setSelectedState] = useState<string | null>(null)
   const [filters, setFilters] = useState<UnionFiltersType>({
     trade: undefined,
     state: undefined,
@@ -59,6 +64,75 @@ export function UnionMap({ unions }: UnionMapProps) {
   useEffect(() => {
     setIsClient(true)
   }, [])
+
+  // Auto-zoom to selected state when filter changes
+  useEffect(() => {
+    if (filters.state && filters.state !== selectedState) {
+      setSelectedState(filters.state)
+      zoomToState(filters.state)
+    } else if (!filters.state && selectedState) {
+      setSelectedState(null)
+      resetMapView()
+    }
+  }, [filters.state, selectedState])
+
+  // Function to zoom to a specific state
+  const zoomToState = (stateCode: string) => {
+    // State center coordinates (approximate)
+    const stateCenters: Record<string, [number, number]> = {
+      'AL': [-86.7911, 32.8067], 'AK': [-149.4937, 63.5887], 'AZ': [-111.4312, 33.7298],
+      'AR': [-92.3731, 34.9697], 'CA': [-119.6816, 36.7783], 'CO': [-105.3111, 39.5501],
+      'CT': [-72.7554, 41.6032], 'DE': [-75.5071, 39.3185], 'FL': [-81.6868, 27.6648],
+      'GA': [-83.6431, 33.0406], 'HI': [-157.4983, 19.8968], 'ID': [-114.4789, 44.2405],
+      'IL': [-88.9861, 40.3495], 'IN': [-86.1349, 39.8494], 'IA': [-93.2105, 42.0329],
+      'KS': [-96.7265, 38.5266], 'KY': [-84.6701, 37.6681], 'LA': [-91.8678, 31.1695],
+      'ME': [-69.3812, 44.6939], 'MD': [-76.6413, 39.0639], 'MA': [-71.5301, 42.2304],
+      'MI': [-84.5363, 43.3266], 'MN': [-93.9000, 46.7296], 'MS': [-89.6785, 32.7416],
+      'MO': [-92.2884, 38.4561], 'MT': [-110.4544, 46.8797], 'NE': [-99.9018, 41.4925],
+      'NV': [-117.0554, 38.8026], 'NH': [-71.5639, 43.1939], 'NJ': [-74.2179, 40.0583],
+      'NM': [-106.0189, 34.5199], 'NY': [-74.2179, 42.1657], 'NC': [-79.0193, 35.7596],
+      'ND': [-99.7840, 47.5515], 'OH': [-82.7937, 40.4173], 'OK': [-96.9289, 35.0078],
+      'OR': [-120.5542, 43.8041], 'PA': [-77.7996, 40.5908], 'RI': [-71.5118, 41.6809],
+      'SC': [-80.9450, 33.8569], 'SD': [-99.4388, 44.2998], 'TN': [-86.6923, 35.7478],
+      'TX': [-99.9018, 31.9686], 'UT': [-111.8624, 39.3210], 'VT': [-72.7107, 44.0459],
+      'VA': [-78.1697, 37.4316], 'WA': [-121.4904, 47.4009], 'WV': [-80.7939, 38.5976],
+      'WI': [-89.6165, 44.2685], 'WY': [-107.3025, 42.7475]
+    }
+
+    const stateCenter = stateCenters[stateCode]
+    if (stateCenter) {
+      setMapPosition({
+        zoom: 3.5, // Zoom level appropriate for state view
+        center: stateCenter
+      })
+    }
+  }
+
+  // Function to reset map to default view
+  const resetMapView = () => {
+    setMapPosition({
+      zoom: 1,
+      center: [-98.5795, 39.8283] // Center of USA
+    })
+  }
+
+  // Handle map position changes
+  const handleMapMove = (position: { coordinates: [number, number]; zoom: number }) => {
+    setMapPosition({
+      zoom: position.zoom,
+      center: position.coordinates
+    })
+  }
+
+  // Function to handle state click
+  const handleStateClick = (geo: { properties: { STUSPS: string } }) => {
+    const stateCode = geo.properties.STUSPS
+    if (stateCode) {
+      setSelectedState(stateCode)
+      setFilters(prev => ({ ...prev, state: stateCode }))
+      zoomToState(stateCode)
+    }
+  }
 
   // Filter unions based on current filters
   const filteredUnions = useMemo(() => {
@@ -156,28 +230,41 @@ export function UnionMap({ unions }: UnionMapProps) {
                   height: "100%"
                 }}
               >
-                <ZoomableGroup zoom={1} maxZoom={4} minZoom={0.8}>
+                <ZoomableGroup 
+                  zoom={mapPosition.zoom} 
+                  center={mapPosition.center} 
+                  onMoveEnd={handleMapMove}
+                  minZoom={0.8}
+                  maxZoom={4}
+                >
                   <Geographies geography={geoUrl}>
                     {({ geographies }) =>
-                      geographies.map(geo => (
-                                                 <Geography
-                           key={geo.rsmKey}
-                           geography={geo}
-                           fill="#f8fafc"
-                           stroke="#64748b"
-                           strokeWidth={1.5}
-                           style={{
-                             default: { outline: 'none' },
-                             hover: { 
-                               fill: '#e2e8f0',
-                               outline: 'none',
-                               stroke: '#475569',
-                               strokeWidth: 2
-                             },
-                             pressed: { outline: 'none' }
-                           }}
-                         />
-                      ))
+                      geographies.map(geo => {
+                        const stateCode = geo.properties.STUSPS
+                        const isSelected = selectedState === stateCode
+                        const hasUnions = filteredUnions.some(union => union.state === stateCode)
+                        
+                        return (
+                          <Geography
+                            key={geo.rsmKey}
+                            geography={geo}
+                            fill={isSelected ? '#3b82f6' : hasUnions ? '#f1f5f9' : '#f8fafc'}
+                            stroke={isSelected ? '#1d4ed8' : '#64748b'}
+                            strokeWidth={isSelected ? 2.5 : 1.5}
+                            style={{
+                              default: { outline: 'none', cursor: 'pointer' },
+                              hover: { 
+                                fill: isSelected ? '#60a5fa' : '#e2e8f0',
+                                outline: 'none',
+                                stroke: isSelected ? '#1d4ed8' : '#475569',
+                                strokeWidth: isSelected ? 2.5 : 2
+                              },
+                              pressed: { outline: 'none' }
+                            }}
+                            onClick={() => handleStateClick(geo)}
+                          />
+                        )
+                      })
                     }
                   </Geographies>
                   
@@ -187,6 +274,11 @@ export function UnionMap({ unions }: UnionMapProps) {
                     const isSelected = selectedUnion?.id === union.id
                     const color = getWageColor(union.baseWage)
                     
+                    // Auto-adjust marker size and label visibility based on zoom
+                    const markerSize = Math.max(6, Math.min(16, mapPosition.zoom * 8))
+                    const showWageLabel = mapPosition.zoom > 0.9
+                    const showCityLabel = mapPosition.zoom > 1.2
+                    
                     return (
                       <HoverCard key={union.id}>
                         <HoverCardTrigger asChild>
@@ -194,38 +286,44 @@ export function UnionMap({ unions }: UnionMapProps) {
                             <g className="cursor-pointer">
                               {/* Marker Circle */}
                               <circle
-                                r={isHovered || isSelected ? 12 : 8}
+                                r={isHovered || isSelected ? markerSize * 1.5 : markerSize}
                                 fill={color}
                                 stroke="white"
-                                strokeWidth={3}
+                                strokeWidth={Math.max(2, mapPosition.zoom * 2)}
                                 className="transition-all duration-200 drop-shadow-sm hover:drop-shadow-md"
                                 onMouseEnter={() => setHoveredUnion(union.id)}
                                 onMouseLeave={() => setHoveredUnion(null)}
                                 onClick={() => setSelectedUnion(union)}
                               />
                               
-                              {/* Wage Label */}
-                              <text
-                                y={-25}
-                                textAnchor="middle"
-                                className="fill-slate-700 text-sm font-semibold pointer-events-none select-none"
-                                style={{ 
-                                  fontSize: isHovered ? '14px' : '12px',
-                                  fontWeight: '600'
-                                }}
-                              >
-                                {formatCurrency(union.baseWage)}/hr
-                              </text>
+                              {/* Wage Label - Auto-adjust based on zoom */}
+                              {showWageLabel && (
+                                <text
+                                  y={-25 - (mapPosition.zoom * 5)}
+                                  textAnchor="middle"
+                                  className="fill-slate-700 text-sm font-semibold pointer-events-none select-none"
+                                  style={{ 
+                                    fontSize: Math.max(10, Math.min(16, mapPosition.zoom * 12)),
+                                    fontWeight: '600'
+                                  }}
+                                >
+                                  {formatCurrency(union.baseWage)}/hr
+                                </text>
+                              )}
                               
-                              {/* City Label */}
-                              <text
-                                y={15}
-                                textAnchor="middle"
-                                className="fill-slate-600 text-xs pointer-events-none select-none"
-                                style={{ fontSize: '11px' }}
-                              >
-                                {union.city}
-                              </text>
+                              {/* City Label - Auto-adjust based on zoom */}
+                              {showCityLabel && (
+                                <text
+                                  y={15 + (mapPosition.zoom * 3)}
+                                  textAnchor="middle"
+                                  className="fill-slate-600 text-xs pointer-events-none select-none"
+                                  style={{ 
+                                    fontSize: Math.max(9, Math.min(14, mapPosition.zoom * 10))
+                                  }}
+                                >
+                                  {union.city}
+                                </text>
+                              )}
                             </g>
                           </Marker>
                         </HoverCardTrigger>
@@ -277,14 +375,30 @@ export function UnionMap({ unions }: UnionMapProps) {
                 </ZoomableGroup>
                               </ComposableMap>
 
-                {/* Subtle Zoom Instructions */}
-                <div className="absolute top-4 left-4 z-10">
+                {/* Map Instructions and State Info */}
+                <div className="absolute top-4 left-4 z-10 space-y-2">
                   <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 shadow-sm">
                     <div className="font-medium mb-1 text-slate-700">🗺️ Map Controls</div>
                     <div className="text-slate-500">• Pinch fingers to zoom in/out</div>
                     <div className="text-slate-500">• Drag to pan around</div>
                     <div className="text-slate-500">• Mouse wheel to zoom (desktop)</div>
+                    <div className="text-slate-500">• Click states to zoom in</div>
                   </div>
+                  
+                  {selectedState && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 shadow-sm">
+                      <div className="font-medium mb-1">📍 Selected State: {selectedState}</div>
+                      <div className="text-blue-600">
+                        {filteredUnions.filter(u => u.state === selectedState).length} unions found
+                      </div>
+                      <button 
+                        onClick={resetMapView}
+                        className="text-blue-600 hover:text-blue-800 underline mt-1"
+                      >
+                        Reset view
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
           )}
