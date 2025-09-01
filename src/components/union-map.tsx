@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { Union, MapCoordinates, UnionFilters as UnionFiltersType } from '@/types/union'
+import { Union, UnionFilters as UnionFiltersType } from '@/types/union'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,16 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { UnionModal } from '@/components/union-modal'
 import { UnionFilters } from '@/components/union-filters'
 import { MapPin, DollarSign, Users, Building2, TrendingUp } from 'lucide-react'
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  Marker,
+  ZoomableGroup
+} from 'react-simple-maps'
+
+// USA TopoJSON data - simplified for better performance
+const geoUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"
 
 interface UnionMapProps {
   unions: Union[]
@@ -40,15 +50,6 @@ export function UnionMap({ unions }: UnionMapProps) {
       return true
     })
   }, [unions, filters])
-
-  // Convert lat/lng to SVG map coordinates
-  const convertToMapCoordinates = (lat: number, lng: number): MapCoordinates => {
-    // Simplified projection for US map - you may want to use a more accurate projection
-    // Use Math.round to ensure consistent results between server and client
-    const x = Math.round(((lng + 125) / 60) * 900 + 50)
-    const y = Math.round(((50 - lat) / 25) * 500 + 50)
-    return { x, y }
-  }
 
   // Get color based on wage level
   const getWageColor = (baseWage: number) => {
@@ -123,135 +124,139 @@ export function UnionMap({ unions }: UnionMapProps) {
             </div>
           )}
           {isClient && (
-            <svg 
-              viewBox="0 0 1000 600" 
-              className="w-full h-auto bg-slate-50 rounded-lg border"
-              style={{ minHeight: '400px' }}
-            >
-            {/* US States Outline (simplified - you'd want actual state paths) */}
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" strokeWidth="1" opacity="0.3"/>
-              </pattern>
-            </defs>
-            
-            {/* Background */}
-            <rect width="1000" height="600" fill="url(#grid)" />
-            
-            {/* Simplified US mainland outline */}
-            <path
-              d="M 100 150 L 150 120 L 200 130 L 300 110 L 400 120 L 500 115 L 600 125 L 700 130 L 800 140 L 850 160 L 900 180 L 920 220 L 900 280 L 880 320 L 850 360 L 800 380 L 750 390 L 700 385 L 650 380 L 600 375 L 550 370 L 500 375 L 450 380 L 400 385 L 350 390 L 300 395 L 250 390 L 200 380 L 150 360 L 120 320 L 100 280 Z"
-              fill="#f8fafc"
-              stroke="#cbd5e1"
-              strokeWidth="2"
-            />
-            
-            {/* Union Location Markers */}
-            {isClient && filteredUnions.map(union => {
-              const coords = convertToMapCoordinates(union.lat, union.lng)
-              const isHovered = hoveredUnion === union.id
-              const isSelected = selectedUnion?.id === union.id
-              const color = getWageColor(union.baseWage)
-              
-              return (
-                <HoverCard key={union.id}>
-                  <HoverCardTrigger asChild>
-                    <g className="cursor-pointer">
-                      {/* Marker Circle */}
-                      <circle
-                        cx={coords.x}
-                        cy={coords.y}
-                        r={isHovered || isSelected ? 12 : 8}
-                        fill={color}
-                        stroke="white"
-                        strokeWidth="3"
-                        className="transition-all duration-200 drop-shadow-sm hover:drop-shadow-md"
-                        onMouseEnter={() => setHoveredUnion(union.id)}
-                        onMouseLeave={() => setHoveredUnion(null)}
-                        onClick={() => setSelectedUnion(union)}
-                      />
-                      
-                      {/* Wage Label */}
-                      <text
-                        x={coords.x}
-                        y={coords.y - 20}
-                        textAnchor="middle"
-                        className="fill-slate-700 text-sm font-semibold pointer-events-none select-none"
-                        style={{ fontSize: isHovered ? '14px' : '12px' }}
-                      >
-                        ${union.baseWage.toFixed(2)}/hr
-                      </text>
-                      
-                      {/* City Label */}
-                      <text
-                        x={coords.x}
-                        y={coords.y + 25}
-                        textAnchor="middle"
-                        className="fill-slate-600 text-xs pointer-events-none select-none"
-                      >
-                        {union.city}
-                      </text>
-                    </g>
-                  </HoverCardTrigger>
+            <div className="w-full h-[600px] bg-slate-50 rounded-lg border overflow-hidden">
+              <ComposableMap
+                projection="geoAlbersUsa"
+                projectionConfig={{
+                  scale: 1000,
+                  center: [0, 0]
+                }}
+                style={{
+                  width: "100%",
+                  height: "100%"
+                }}
+              >
+                <ZoomableGroup zoom={1} maxZoom={4} minZoom={0.8}>
+                  <Geographies geography={geoUrl}>
+                    {({ geographies }) =>
+                      geographies.map(geo => (
+                                                 <Geography
+                           key={geo.rsmKey}
+                           geography={geo}
+                           fill="#f8fafc"
+                           stroke="#64748b"
+                           strokeWidth={1.5}
+                           style={{
+                             default: { outline: 'none' },
+                             hover: { 
+                               fill: '#e2e8f0',
+                               outline: 'none',
+                               stroke: '#475569',
+                               strokeWidth: 2
+                             },
+                             pressed: { outline: 'none' }
+                           }}
+                         />
+                      ))
+                    }
+                  </Geographies>
                   
-                  <HoverCardContent className="w-80">
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-3">
-                        <img 
-                          src={union.logoPath} 
-                          alt={union.name}
-                          className="w-12 h-12 rounded-lg object-cover bg-slate-100"
-                          onError={(e) => {
-                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTYgMTZIMzJWMzJIMTZWMTZaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'
-                          }}
-                        />
-                        <div>
-                          <h4 className="font-semibold text-slate-900">{union.shortName}</h4>
-                          <p className="text-sm text-slate-600">{union.city}, {union.state}</p>
-                          <div className="flex items-center gap-4 mt-1">
-                            <span className="text-sm font-medium text-green-600">
-                              ${union.baseWage.toFixed(2)}/hr
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              {union.members.toLocaleString()} members
-                            </span>
+                  {/* Union Location Markers */}
+                  {filteredUnions.map(union => {
+                    const isHovered = hoveredUnion === union.id
+                    const isSelected = selectedUnion?.id === union.id
+                    const color = getWageColor(union.baseWage)
+                    
+                    return (
+                      <HoverCard key={union.id}>
+                        <HoverCardTrigger asChild>
+                          <Marker coordinates={[union.lng, union.lat]}>
+                            <g className="cursor-pointer">
+                              {/* Marker Circle */}
+                              <circle
+                                r={isHovered || isSelected ? 12 : 8}
+                                fill={color}
+                                stroke="white"
+                                strokeWidth={3}
+                                className="transition-all duration-200 drop-shadow-sm hover:drop-shadow-md"
+                                onMouseEnter={() => setHoveredUnion(union.id)}
+                                onMouseLeave={() => setHoveredUnion(null)}
+                                onClick={() => setSelectedUnion(union)}
+                              />
+                              
+                              {/* Wage Label */}
+                              <text
+                                y={-25}
+                                textAnchor="middle"
+                                className="fill-slate-700 text-sm font-semibold pointer-events-none select-none"
+                                style={{ 
+                                  fontSize: isHovered ? '14px' : '12px',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                ${union.baseWage.toFixed(2)}/hr
+                              </text>
+                              
+                              {/* City Label */}
+                              <text
+                                y={15}
+                                textAnchor="middle"
+                                className="fill-slate-600 text-xs pointer-events-none select-none"
+                                style={{ fontSize: '11px' }}
+                              >
+                                {union.city}
+                              </text>
+                            </g>
+                          </Marker>
+                        </HoverCardTrigger>
+                        
+                        <HoverCardContent className="w-80">
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                              <img 
+                                src={union.logoPath} 
+                                alt={union.name}
+                                className="w-12 h-12 rounded-lg object-cover bg-slate-100"
+                                onError={(e) => {
+                                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTYgMTZIMzJWMzJIMTZWMTZaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'
+                                }}
+                              />
+                              <div>
+                                <h4 className="font-semibold text-slate-900">{union.shortName}</h4>
+                                <p className="text-sm text-slate-600">{union.city}, {union.state}</p>
+                                <div className="flex items-center gap-4 mt-1">
+                                  <span className="text-sm font-medium text-green-600">
+                                    ${union.baseWage.toFixed(2)}/hr
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    {union.members.toLocaleString()} members
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-slate-500">Benefits:</span>
+                                <span className="font-medium ml-1">${union.fringeBenefits}/hr</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Total:</span>
+                                <span className="font-medium ml-1">${union.totalPackage}/hr</span>
+                              </div>
+                            </div>
+                            
+                            <Badge variant="outline" className="text-xs">
+                              {union.trade}
+                            </Badge>
                           </div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-slate-500">Benefits:</span>
-                          <span className="font-medium ml-1">${union.fringeBenefits}/hr</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">Total:</span>
-                          <span className="font-medium ml-1">${union.totalPackage}/hr</span>
-                        </div>
-                      </div>
-                      
-                      <Badge variant="outline" className="text-xs">
-                        {union.trade}
-                      </Badge>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
-              )
-            })}
-            
-            {/* Legend */}
-            <g transform="translate(20, 500)">
-              <text x="0" y="0" className="fill-slate-700 text-sm font-semibold">Wage Levels:</text>
-              <circle cx="15" cy="20" r="6" fill="#059669" />
-              <text x="25" y="25" className="fill-slate-600 text-xs">$60+/hr</text>
-              <circle cx="15" cy="40" r="6" fill="#2563eb" />
-              <text x="25" y="45" className="fill-slate-600 text-xs">$50-60/hr</text>
-              <circle cx="15" cy="60" r="6" fill="#7c3aed" />
-              <text x="25" y="65" className="fill-slate-600 text-xs">$40-50/hr</text>
-              <circle cx="15" cy="80" r="6" fill="#dc2626" />
-              <text x="25" y="85" className="fill-slate-600 text-xs">Under $40/hr</text>
-            </g>
-          </svg>
+                        </HoverCardContent>
+                      </HoverCard>
+                    )
+                  })}
+                </ZoomableGroup>
+              </ComposableMap>
+            </div>
           )}
         </div>
         
@@ -268,6 +273,29 @@ export function UnionMap({ unions }: UnionMapProps) {
             <div className="flex items-center gap-2">
               <Users size={16} />
               <span>Click for Details</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="mt-4 flex justify-center">
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-slate-600 font-medium">Wage Levels:</span>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-green-600"></div>
+              <span className="text-slate-600">$60+/hr</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+              <span className="text-slate-600">$50-60/hr</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-purple-600"></div>
+              <span className="text-slate-600">$40-50/hr</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-600"></div>
+              <span className="text-slate-600">Under $40/hr</span>
             </div>
           </div>
         </div>

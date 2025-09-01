@@ -43,11 +43,6 @@ export interface Union {
     OTHER = 'Other'
   }
   
-  export interface MapCoordinates {
-    x: number
-    y: number
-  }
-  
   export interface UnionFilters {
     trade?: UnionTrade
     state?: string
