@@ -36,7 +36,7 @@ interface UnionMapProps {
 
 export function UnionMap({ unions }: UnionMapProps) {
   const [selectedUnion, setSelectedUnion] = useState<Union | null>(null)
-  const [hoveredUnion, setHoveredUnion] = useState<string | null>(null)
+  const [hoveredUnion, setHoveredUnion] = useState<number | null>(null)
   const [isClient, setIsClient] = useState(false)
   const [filters, setFilters] = useState<UnionFiltersType>({
     trade: undefined,
