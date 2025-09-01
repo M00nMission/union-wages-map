@@ -120,3 +120,43 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Enhanced touch handling for maps */
+.map-container {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth zoom transitions */
+.map-container svg {
+  transition: transform 0.2s ease-out;
+}
+
+/* Prevent text selection during panning */
+.map-container text {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Enhanced cursor states */
+.map-container.cursor-grab {
+  cursor: grab;
+}
+
+.map-container.cursor-grabbing {
+  cursor: grabbing;
+}
+
+/* Touch-friendly interactions */
+@media (pointer: coarse) {
+  .map-container {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+}

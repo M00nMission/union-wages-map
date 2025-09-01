@@ -134,7 +134,7 @@ export function UnionMap({ unions }: UnionMapProps) {
             </div>
           )}
           {isClient && (
-            <div className="w-full h-[600px] bg-slate-50 rounded-lg border overflow-hidden">
+            <div className="w-full h-[600px] bg-slate-50 rounded-lg border overflow-hidden relative touch-pan-x touch-pan-y touch-pinch-zoom cursor-grab active:cursor-grabbing map-container">
               <ComposableMap
                 projection="geoAlbersUsa"
                 projectionConfig={{
@@ -265,8 +265,18 @@ export function UnionMap({ unions }: UnionMapProps) {
                     )
                   })}
                 </ZoomableGroup>
-              </ComposableMap>
-            </div>
+                              </ComposableMap>
+
+                {/* Subtle Zoom Instructions */}
+                <div className="absolute top-4 left-4 z-10">
+                  <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 shadow-sm">
+                    <div className="font-medium mb-1 text-slate-700">🗺️ Map Controls</div>
+                    <div className="text-slate-500">• Pinch fingers to zoom in/out</div>
+                    <div className="text-slate-500">• Drag to pan around</div>
+                    <div className="text-slate-500">• Mouse wheel to zoom (desktop)</div>
+                  </div>
+                </div>
+              </div>
           )}
         </div>
         
