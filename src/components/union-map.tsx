@@ -274,51 +274,73 @@ export function UnionMap({ unions }: UnionMapProps) {
                     const isSelected = selectedUnion?.id === union.id
                     const color = getWageColor(union.baseWage)
                     
-                    // Auto-adjust marker size and label visibility based on zoom
-                    const markerSize = Math.max(6, Math.min(16, mapPosition.zoom * 8))
-                    const showWageLabel = mapPosition.zoom > 0.9
-                    const showCityLabel = mapPosition.zoom > 1.2
+                    // Fixed marker sizes for better consistency
+                    const baseMarkerSize = 6
+                    const hoveredMarkerSize = 8
+                    const selectedMarkerSize = 10
+                    
+                    // Smart label visibility based on zoom and density
+                    const showWageLabel = mapPosition.zoom > 1.5
+                    const showCityLabel = mapPosition.zoom > 2.0
+                    
+                    // Calculate marker size based on state
+                    let markerSize = baseMarkerSize
+                    if (isSelected) markerSize = selectedMarkerSize
+                    else if (isHovered) markerSize = hoveredMarkerSize
                     
                     return (
                       <HoverCard key={union.id}>
                         <HoverCardTrigger asChild>
                           <Marker coordinates={[union.lng, union.lat]}>
                             <g className="cursor-pointer">
-                              {/* Marker Circle */}
+                              {/* Background circle for better text readability */}
+                              {showWageLabel && (
+                                <circle
+                                  r={markerSize + 8}
+                                  fill="rgba(255, 255, 255, 0.9)"
+                                  stroke="rgba(255, 255, 255, 0.8)"
+                                  strokeWidth={1}
+                                  className="pointer-events-none"
+                                />
+                              )}
+                              
+                              {/* Main Marker Circle */}
                               <circle
-                                r={isHovered || isSelected ? markerSize * 1.5 : markerSize}
+                                r={markerSize}
                                 fill={color}
                                 stroke="white"
-                                strokeWidth={Math.max(2, mapPosition.zoom * 2)}
+                                strokeWidth={2}
                                 className="transition-all duration-200 drop-shadow-sm hover:drop-shadow-md"
                                 onMouseEnter={() => setHoveredUnion(union.id)}
                                 onMouseLeave={() => setHoveredUnion(null)}
                                 onClick={() => setSelectedUnion(union)}
                               />
                               
-                              {/* Wage Label - Auto-adjust based on zoom */}
+                              {/* Wage Label - Clean, readable positioning */}
                               {showWageLabel && (
                                 <text
-                                  y={-25 - (mapPosition.zoom * 5)}
+                                  y={-markerSize - 8}
                                   textAnchor="middle"
-                                  className="fill-slate-700 text-sm font-semibold pointer-events-none select-none"
+                                  className="fill-slate-800 font-semibold pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(10, Math.min(16, mapPosition.zoom * 12)),
-                                    fontWeight: '600'
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    textShadow: '0 1px 2px rgba(255,255,255,0.8)'
                                   }}
                                 >
                                   {formatCurrency(union.baseWage)}/hr
                                 </text>
                               )}
                               
-                              {/* City Label - Auto-adjust based on zoom */}
+                              {/* City Label - Below marker for clarity */}
                               {showCityLabel && (
                                 <text
-                                  y={15 + (mapPosition.zoom * 3)}
+                                  y={markerSize + 12}
                                   textAnchor="middle"
-                                  className="fill-slate-600 text-xs pointer-events-none select-none"
+                                  className="fill-slate-600 font-medium pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(9, Math.min(14, mapPosition.zoom * 10))
+                                    fontSize: '11px',
+                                    textShadow: '0 1px 2px rgba(255,255,255,0.8)'
                                   }}
                                 >
                                   {union.city}
@@ -377,16 +399,27 @@ export function UnionMap({ unions }: UnionMapProps) {
 
                 {/* Map Instructions and State Info */}
                 <div className="absolute top-4 left-4 z-10 space-y-2">
-                  <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 shadow-sm">
-                    <div className="font-medium mb-1 text-slate-700">🗺️ Map Controls</div>
-                    <div className="text-slate-500">• Pinch fingers to zoom in/out</div>
-                    <div className="text-slate-500">• Drag to pan around</div>
-                    <div className="text-slate-500">• Mouse wheel to zoom (desktop)</div>
-                    <div className="text-slate-500">• Click states to zoom in</div>
+                  <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 shadow-lg">
+                    <div className="font-medium mb-2 text-slate-700">🗺️ Map Controls</div>
+                    <div className="space-y-1 text-slate-500">
+                      <div>• Pinch fingers to zoom in/out</div>
+                      <div>• Drag to pan around</div>
+                      <div>• Mouse wheel to zoom (desktop)</div>
+                      <div>• Click states to zoom in</div>
+                      <div>• Hover over markers for details</div>
+                    </div>
+                  </div>
+                  
+                  {/* Union Density Info */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700 shadow-lg">
+                    <div className="font-medium mb-1">📊 Union Coverage</div>
+                    <div className="text-green-600">
+                      {filteredUnions.length} unions • {new Set(filteredUnions.map(u => u.state)).size} states
+                    </div>
                   </div>
                   
                   {selectedState && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 shadow-sm">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 shadow-lg">
                       <div className="font-medium mb-1">📍 Selected State: {selectedState}</div>
                       <div className="text-blue-600">
                         {filteredUnions.filter(u => u.state === selectedState).length} unions found
@@ -421,25 +454,41 @@ export function UnionMap({ unions }: UnionMapProps) {
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="mt-4 flex justify-center">
-          <div className="flex items-center gap-4 text-xs">
-            <span className="text-slate-600 font-medium">Wage Levels:</span>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-600"></div>
-              <span className="text-slate-600">$60+/hr</span>
+        {/* Enhanced Legend */}
+        <div className="mt-6 p-4 bg-slate-50 rounded-lg border">
+          <div className="text-center mb-3">
+            <h3 className="text-sm font-semibold text-slate-700 mb-2">Wage Level Legend</h3>
+            <p className="text-xs text-slate-500">Click on markers to see detailed information</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-green-600 shadow-sm"></div>
+              <div className="text-xs">
+                <div className="font-medium text-slate-700">$60+/hr</div>
+                <div className="text-slate-500">Premium</div>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-              <span className="text-slate-600">$50-60/hr</span>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-blue-600 shadow-sm"></div>
+              <div className="text-xs">
+                <div className="font-medium text-slate-700">$50-60/hr</div>
+                <div className="text-slate-500">High</div>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-purple-600"></div>
-              <span className="text-slate-600">$40-50/hr</span>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-purple-600 shadow-sm"></div>
+              <div className="text-xs">
+                <div className="font-medium text-slate-700">$40-50/hr</div>
+                <div className="text-slate-500">Medium</div>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-600"></div>
-              <span className="text-slate-600">Under $40/hr</span>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-red-600 shadow-sm"></div>
+              <div className="text-xs">
+                <div className="font-medium text-slate-700">Under $40/hr</div>
+                <div className="text-slate-500">Entry</div>
+              </div>
             </div>
           </div>
         </div>
