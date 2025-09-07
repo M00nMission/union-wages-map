@@ -2998,47 +2998,6 @@ export const ibewData: Union[] = [
     wageSheet: ''
   },
   {
-    id: 137,
-    name: 'IBEW Local 137',
-    shortName: 'IBEW Local 137',
-    city: 'Topeka',
-    state: 'KS',
-    lat: 39.0473,
-    lng: -95.6752,
-    baseWage: 36.50,
-    fringeBenefits: 17.50,
-    totalPackage: 54.00,
-    members: 800,
-    logoPath: '/union-logos/ibew-logo.png',
-    description: 'IBEW Local 137 represents electrical workers in the Topeka, Kansas area.',
-    trade: UnionTrade.ELECTRICAL,
-    established: 1896,
-    jurisdiction: 'Topeka metropolitan area',
-    contactInfo: {
-      phone: '(785) 233-3121',
-      address: 'Topeka, KS'
-    },
-    benefits: {
-      healthInsurance: true,
-      pension: true,
-      vacation: 10,
-      apprenticeship: true
-    },
-    yearlySalary: 73000.00,
-    hourlyRate: 36.50,
-    costOfLivingPercentage: 75,
-    adjustedBaseWage: 48.67,
-    definedPension: 6.00,
-    contributionPension: 2.50,
-    pension401k: 0,
-    vacationHours: 6.50,
-    healthAndWelfare: 1.10,
-    nebfPension: 0,
-    dues: 4.00,
-    lastUpdated: '7/30/25',
-    wageSheet: ''
-  },
-  {
     id: 138,
     name: 'IBEW Local 138',
     shortName: 'IBEW Local 138',

@@ -267,17 +267,62 @@ export function UnionMap({ unions }: UnionMapProps) {
     })
   }, [unions, filters])
 
-  // No clustering - each local gets its own unique dot
+  // Clustering logic to group unions with identical or very close coordinates
   const clusteredUnions = useMemo(() => {
-    return filteredUnions.map(union => ({
-      id: `single-${union.id}`,
-      unions: [union],
-      centerLat: union.lat,
-      centerLng: union.lng,
-      avgWage: union.baseWage,
-      totalMembers: union.members,
-      isCluster: false
-    }))
+    const clusters: Array<{
+      id: string
+      unions: Union[]
+      centerLat: number
+      centerLng: number
+      avgWage: number
+      totalMembers: number
+      isCluster: boolean
+    }> = []
+    
+    const processedUnions = new Set<number>()
+    
+    filteredUnions.forEach(union => {
+      if (processedUnions.has(union.id)) return
+      
+      // Find unions with identical coordinates (within 0.001 degrees tolerance)
+      const nearbyUnions = filteredUnions.filter(otherUnion => 
+        !processedUnions.has(otherUnion.id) &&
+        Math.abs(union.lat - otherUnion.lat) < 0.001 &&
+        Math.abs(union.lng - otherUnion.lng) < 0.001
+      )
+      
+      // Mark all nearby unions as processed
+      nearbyUnions.forEach(u => processedUnions.add(u.id))
+      
+      if (nearbyUnions.length === 1) {
+        // Single union - no clustering needed
+        clusters.push({
+          id: `single-${union.id}`,
+          unions: [union],
+          centerLat: union.lat,
+          centerLng: union.lng,
+          avgWage: union.baseWage,
+          totalMembers: union.members,
+          isCluster: false
+        })
+      } else {
+        // Multiple unions at same location - create cluster
+        const avgWage = nearbyUnions.reduce((sum, u) => sum + u.baseWage, 0) / nearbyUnions.length
+        const totalMembers = nearbyUnions.reduce((sum, u) => sum + u.members, 0)
+        
+        clusters.push({
+          id: `cluster-${union.id}`,
+          unions: nearbyUnions,
+          centerLat: union.lat,
+          centerLng: union.lng,
+          avgWage,
+          totalMembers,
+          isCluster: true
+        })
+      }
+    })
+    
+    return clusters
   }, [filteredUnions])
 
   // Get color based on wage level
@@ -440,8 +485,9 @@ export function UnionMap({ unions }: UnionMapProps) {
                     }
                   </Geographies>
                   
-                  {/* Union Location Markers - Now with clustering */}
-                  {clusteredUnions.map(cluster => {
+                  {/* Union Location Markers - Now with clustering - rendered on top */}
+                  <g style={{ zIndex: 1000 }}>
+                    {clusteredUnions.map(cluster => {
                     const primaryUnion = cluster.unions[0]
                     const color = getWageColor(cluster.avgWage)
                     
@@ -452,15 +498,23 @@ export function UnionMap({ unions }: UnionMapProps) {
                       ? Math.min((4 + cluster.unions.length * 0.2) * zoomFactor, 5) 
                       : Math.max(2, 3 * zoomFactor)
                     
+                    // Dynamic label spacing based on zoom level - closer when zoomed in
+                    const labelSpacingFactor = Math.max(0.5, 1 / mapPosition.zoom) // Closer spacing when zoomed in
+                    const wageLabelOffset = baseMarkerSize + (8 * labelSpacingFactor) // Dynamic spacing above dot
+                    const cityLabelOffset = baseMarkerSize + (10 * labelSpacingFactor) // Dynamic spacing below dot
+                    
                     // Improved label visibility based on zoom and density - much more conservative
                     const showWageLabel = mapPosition.zoom > 3.0
                     const showCityLabel = mapPosition.zoom > 4.0
+                    
+                    // For clusters, show the city name from the first union
+                    const displayCity = cluster.isCluster ? cluster.unions[0].city : primaryUnion.city
                     
                     return (
                       <HoverCard key={cluster.id}>
                         <HoverCardTrigger asChild>
                           <Marker coordinates={[cluster.centerLng, cluster.centerLat]}>
-                            <g className="cursor-pointer">
+                            <g className="cursor-pointer" style={{ zIndex: 1000 }}>
                               
                               {/* Simple Marker Circle */}
                               <circle
@@ -470,32 +524,35 @@ export function UnionMap({ unions }: UnionMapProps) {
                               />
                               
                               
-                              {/* Wage Label - Clean, readable positioning with zoom-based sizing */}
+                              {/* Wage Label - Dynamic positioning that gets closer when zoomed in */}
                               {showWageLabel && (
                                 <text
-                                  y={-baseMarkerSize - 8}
+                                  y={-wageLabelOffset}
                                   textAnchor="middle"
                                   className="fill-slate-800 font-semibold pointer-events-none select-none"
                                   style={{ 
                                     fontSize: Math.max(4, (cluster.isCluster ? 6 : 8) * textZoomFactor),
-                                    fontWeight: '600'
+                                    fontWeight: '600',
+                                    zIndex: 1000
                                   }}
                                 >
                                   {formatCurrency(cluster.avgWage)}/hr
                                 </text>
                               )}
                               
-                              {/* City Label - Below marker for clarity with zoom-based sizing */}
-                              {showCityLabel && !cluster.isCluster && (
+                              {/* City Label - Dynamic positioning that gets closer when zoomed in */}
+                              {showCityLabel && (
                                 <text
-                                  y={baseMarkerSize + 10}
+                                  y={cityLabelOffset}
                                   textAnchor="middle"
                                   className="fill-slate-600 font-medium pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(3, 6 * textZoomFactor)
+                                    fontSize: Math.max(3, 6 * textZoomFactor),
+                                    zIndex: 1001,
+                                    textShadow: '1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8), 1px -1px 2px rgba(255,255,255,0.8), -1px 1px 2px rgba(255,255,255,0.8)'
                                   }}
                                 >
-                                  {primaryUnion.city}
+                                  {displayCity}
                                 </text>
                               )}
                             </g>
@@ -593,6 +650,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                       </HoverCard>
                     )
                   })}
+                  </g>
                 </ZoomableGroup>
                               </ComposableMap>
 
