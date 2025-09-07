@@ -53,10 +53,9 @@ export function UnionMap({ unions }: UnionMapProps) {
     center: [-98.5795, 39.8283] as [number, number] // Center of USA
   })
   const [selectedState, setSelectedState] = useState<string | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const [isMapInViewport, setIsMapInViewport] = useState(false)
   const [mapRef, setMapRef] = useState<HTMLDivElement | null>(null)
+  const [isHovering, setIsHovering] = useState(false)
   const [filters, setFilters] = useState<UnionFiltersType>({
     trade: undefined,
     state: undefined,
@@ -91,6 +90,7 @@ export function UnionMap({ unions }: UnionMapProps) {
       observer.disconnect()
     }
   }, [mapRef, isClient])
+
 
   // Keyboard shortcuts for zoom controls - only when map is in viewport
   useEffect(() => {
@@ -138,7 +138,7 @@ export function UnionMap({ unions }: UnionMapProps) {
         
         // Zoom towards the center of the map
         const delta = event.deltaY > 0 ? 0.9 : 1.1
-        const newZoom = Math.max(0.8, Math.min(4, mapPosition.zoom * delta))
+        const newZoom = Math.max(0.8, Math.min(8, mapPosition.zoom * delta))
         
         setMapPosition(prev => ({
           zoom: newZoom,
@@ -180,10 +180,10 @@ export function UnionMap({ unions }: UnionMapProps) {
     })
   }
 
-  // Zoom control functions with smooth transitions
+  // Zoom control functions with smooth transitions and higher max zoom
   const zoomIn = () => {
     setMapPosition(prev => ({
-      zoom: Math.min(prev.zoom * 1.3, 4),
+      zoom: Math.min(prev.zoom * 1.3, 8), // Increased from 4 to 8
       center: prev.center
     }))
   }
@@ -233,12 +233,13 @@ export function UnionMap({ unions }: UnionMapProps) {
     }
   }
 
-  // Quick zoom presets
+  // Quick zoom presets with higher max zoom
   const zoomPresets = [
     { name: 'Country', zoom: 1, center: [-98.5795, 39.8283] as [number, number] },
     { name: 'Region', zoom: 2, center: [-98.5795, 39.8283] as [number, number] },
     { name: 'State', zoom: 3.5, center: [-98.5795, 39.8283] as [number, number] },
-    { name: 'City', zoom: 4, center: [-98.5795, 39.8283] as [number, number] }
+    { name: 'City', zoom: 5, center: [-98.5795, 39.8283] as [number, number] },
+    { name: 'Detail', zoom: 7, center: [-98.5795, 39.8283] as [number, number] }
   ]
 
   const applyZoomPreset = (preset: typeof zoomPresets[0]) => {
@@ -248,111 +249,17 @@ export function UnionMap({ unions }: UnionMapProps) {
     })
   }
 
-  // Enhanced drag handling for both desktop and mobile
-  const handlePointerDown = (event: React.PointerEvent) => {
-    // Don't start drag if clicking on interactive elements
-    const target = event.target as HTMLElement
-    if (target.closest('button') || target.closest('[role="button"]') || target.closest('a') || target.closest('svg')) {
-      return
-    }
 
-    event.preventDefault()
-    setIsDragging(true)
-    setDragStart({ x: event.clientX, y: event.clientY })
-    
-    // Store initial map position for smooth dragging
-    const initialCenter = mapPosition.center
-    const initialZoom = mapPosition.zoom
-    
-    // Add global event listeners for smooth dragging
-    const handlePointerMove = (e: PointerEvent) => {
-      if (!dragStart) return
-      
-      const deltaX = e.clientX - dragStart.x
-      const deltaY = e.clientY - dragStart.y
-      
-      // More responsive sensitivity for trackpad
-      const sensitivity = 1.5 / initialZoom
-      const newCenter: [number, number] = [
-        initialCenter[0] - (deltaX * sensitivity),
-        initialCenter[1] + (deltaY * sensitivity)
-      ]
-      
-      setMapPosition(prev => ({
-        ...prev,
-        center: newCenter
-      }))
-    }
-
-    const handlePointerUp = () => {
-      setIsDragging(false)
-      setDragStart(null)
-      document.removeEventListener('pointermove', handlePointerMove)
-      document.removeEventListener('pointerup', handlePointerUp)
-    }
-
-    document.addEventListener('pointermove', handlePointerMove)
-    document.addEventListener('pointerup', handlePointerUp)
+  // Handle map container hover for cursor management
+  const handleMapContainerMouseEnter = () => {
+    setIsHovering(true)
   }
 
-  // Mouse event fallback for better desktop compatibility
-  const handleMouseDown = (event: React.MouseEvent) => {
-    // Only handle left mouse button
-    if (event.button !== 0) return
-    
-    // Don't start drag if clicking on interactive elements
-    const target = event.target as HTMLElement
-    if (target.closest('button') || target.closest('[role="button"]') || target.closest('a') || target.closest('svg')) {
-      return
-    }
-
-    event.preventDefault()
-    setIsDragging(true)
-    setDragStart({ x: event.clientX, y: event.clientY })
-    
-    // Store initial map position for smooth dragging
-    const initialCenter = mapPosition.center
-    const initialZoom = mapPosition.zoom
-    
-    // Add global event listeners for smooth dragging
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragStart) return
-      
-      const deltaX = e.clientX - dragStart.x
-      const deltaY = e.clientY - dragStart.y
-      
-      // Responsive sensitivity for mouse
-      const sensitivity = 1.2 / initialZoom
-      const newCenter: [number, number] = [
-        initialCenter[0] - (deltaX * sensitivity),
-        initialCenter[1] + (deltaY * sensitivity)
-      ]
-      
-      setMapPosition(prev => ({
-        ...prev,
-        center: newCenter
-      }))
-    }
-
-    const handleMouseUp = () => {
-      setIsDragging(false)
-      setDragStart(null)
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
+  const handleMapContainerMouseLeave = () => {
+    setIsHovering(false)
   }
 
-  // Prevent default click behavior on map to ensure drag works
-  const handleMapClick = (event: React.MouseEvent) => {
-    // Only prevent default if we're not clicking on interactive elements
-    const target = event.target as HTMLElement
-    if (!target.closest('button') && !target.closest('[role="button"]') && !target.closest('a') && !target.closest('svg')) {
-      event.preventDefault()
-    }
-  }
+
 
 
   // Function to handle state click
@@ -364,6 +271,7 @@ export function UnionMap({ unions }: UnionMapProps) {
       zoomToState(stateCode)
     }
   }
+
 
   // Filter unions based on current filters
   const filteredUnions = useMemo(() => {
@@ -543,11 +451,10 @@ export function UnionMap({ unions }: UnionMapProps) {
               <div 
                 ref={setMapRef}
                 className={`w-full h-[600px] bg-slate-50 rounded-lg border overflow-hidden relative touch-pan-x touch-pan-y touch-pinch-zoom map-container select-none transition-all duration-300 ${
-                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
-                } ${isMapInViewport ? 'ring-2 ring-blue-200' : ''}`}
-                onPointerDown={handlePointerDown}
-                onMouseDown={handleMouseDown}
-                onClick={handleMapClick}
+                  isMapInViewport ? 'ring-2 ring-blue-200' : ''
+                }`}
+                onMouseEnter={handleMapContainerMouseEnter}
+                onMouseLeave={handleMapContainerMouseLeave}
                 style={{
                   userSelect: 'none',
                   WebkitUserSelect: 'none',
@@ -555,14 +462,15 @@ export function UnionMap({ unions }: UnionMapProps) {
                   msUserSelect: 'none',
                   WebkitTouchCallout: 'none',
                   WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'pan-x pan-y pinch-zoom' // Allow touch gestures but control them
+                  touchAction: 'pan-x pan-y pinch-zoom', // Allow touch gestures but control them
+                  cursor: isHovering ? 'grab' : 'default'
                 }}
               >
                 {/* Reset Button - Prominent */}
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
                   <Button
                     onClick={zoomToFit}
-                    className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 px-4 py-2"
+                    className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 px-4 py-2 cursor-pointer"
                     variant="outline"
                   >
                     <RotateCcw size={16} className="mr-2" />
@@ -578,8 +486,8 @@ export function UnionMap({ unions }: UnionMapProps) {
                       variant="ghost"
                       size="sm"
                       onClick={zoomIn}
-                      disabled={mapPosition.zoom >= 4}
-                      className="h-10 w-10 p-0 touch-manipulation"
+                      disabled={mapPosition.zoom >= 8}
+                      className="h-10 w-10 p-0 touch-manipulation cursor-pointer"
                     >
                       <ZoomIn size={16} />
                     </Button>
@@ -588,7 +496,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                       size="sm"
                       onClick={zoomOut}
                       disabled={mapPosition.zoom <= 0.8}
-                      className="h-10 w-10 p-0 touch-manipulation"
+                      className="h-10 w-10 p-0 touch-manipulation cursor-pointer"
                     >
                       <ZoomOut size={16} />
                     </Button>
@@ -619,7 +527,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => applyZoomPreset(preset)}
-                          className={`h-6 text-xs justify-start touch-manipulation ${
+                          className={`h-6 text-xs justify-start touch-manipulation cursor-pointer ${
                             Math.abs(mapPosition.zoom - preset.zoom) < 0.1 
                               ? 'bg-blue-100 text-blue-700' 
                               : 'hover:bg-slate-100'
@@ -632,34 +540,14 @@ export function UnionMap({ unions }: UnionMapProps) {
                   </div>
                 </div>
 
-                {/* Unified Gesture Hint */}
-                <div className="absolute bottom-4 left-4 z-20">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 shadow-lg">
-                    <div className="font-medium mb-1">🎯 Touch Gestures</div>
-                    <div className="text-blue-600">
-                      <div>• Pinch to zoom</div>
-                      <div>• Drag to pan smoothly</div>
-                      <div>• Tap markers for details</div>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Drag Indicator - Subtle */}
-                {isDragging && (
-                  <div className="absolute top-2 right-2 z-30 pointer-events-none">
-                    <div className="bg-slate-800/90 text-white px-2 py-1 rounded text-xs font-medium shadow-lg">
-                      Dragging
-                    </div>
-                  </div>
-                )}
-
-                {/* Debug Info - Remove in production */}
+                {/* Debug Info - Only in development */}
                 {process.env.NODE_ENV === 'development' && (
                   <div className="absolute bottom-2 left-2 z-30 pointer-events-none">
                     <div className="bg-black/80 text-white px-2 py-1 rounded text-xs font-mono shadow-lg">
-                      <div>Drag: {isDragging ? 'YES' : 'NO'}</div>
-                      <div>Viewport: {isMapInViewport ? 'YES' : 'NO'}</div>
                       <div>Zoom: {Math.round(mapPosition.zoom * 100)}%</div>
+                      <div>Center: [{mapPosition.center[0].toFixed(1)}, {mapPosition.center[1].toFixed(1)}]</div>
+                      <div>Viewport: {isMapInViewport ? 'YES' : 'NO'}</div>
                     </div>
                   </div>
                 )}
@@ -679,16 +567,11 @@ export function UnionMap({ unions }: UnionMapProps) {
                   center={mapPosition.center} 
                   onMoveEnd={handleMapMove}
                   minZoom={0.8}
-                  maxZoom={4}
-                  translateExtent={[[-300, -300], [300, 300]]}
-                  zoomExtent={[0.8, 4]}
-                  filterZoomEvent={(event) => {
+                  maxZoom={8}
+                  translateExtent={[[-500, -500], [500, 500]]}
+                  filterZoomEvent={(event: any) => {
                     // Allow pinch-to-zoom and wheel events when map is in viewport
                     return event.type === 'touchstart' || event.type === 'touchmove' || (event.type === 'wheel' && isMapInViewport)
-                  }}
-                  filterPanEvent={(event) => {
-                    // Allow some panning for trackpad gestures but prioritize our custom drag
-                    return event.type === 'touchstart' || event.type === 'touchmove'
                   }}
                 >
                   <Geographies geography={geoUrl}>
@@ -730,7 +613,8 @@ export function UnionMap({ unions }: UnionMapProps) {
                     const color = getWageColor(cluster.avgWage)
                     
                     // Dynamic marker sizes based on zoom and cluster size - smaller for better readability
-                    const zoomFactor = Math.max(0.5, 1 / mapPosition.zoom) // Smaller markers at higher zoom
+                    const zoomFactor = Math.max(0.3, 1 / mapPosition.zoom) // More aggressive scaling for text
+                    const textZoomFactor = Math.max(0.2, 1 / (mapPosition.zoom * 1.5)) // Even more aggressive for text
                     const baseMarkerSize = cluster.isCluster 
                       ? Math.min((6 + cluster.unions.length * 0.3) * zoomFactor, 8) 
                       : Math.max(3, 4 * zoomFactor)
@@ -738,9 +622,9 @@ export function UnionMap({ unions }: UnionMapProps) {
                     const selectedMarkerSize = baseMarkerSize + 2
                     
                     // Improved label visibility based on zoom and density - more conservative
-                    const showWageLabel = mapPosition.zoom > 2.2
-                    const showCityLabel = mapPosition.zoom > 3.0
-                    const showClusterCount = cluster.isCluster && mapPosition.zoom > 1.5
+                    const showWageLabel = mapPosition.zoom > 2.5
+                    const showCityLabel = mapPosition.zoom > 3.5
+                    const showClusterCount = cluster.isCluster && mapPosition.zoom > 1.8
                     
                     // Calculate marker size based on state
                     let markerSize = baseMarkerSize
@@ -782,7 +666,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                   textAnchor="middle"
                                   className="fill-white font-bold pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.min(markerSize * 0.8, 10),
+                                    fontSize: Math.max(6, Math.min(markerSize * 0.8, 10) * textZoomFactor),
                                     fontWeight: '700',
                                     textShadow: '0 1px 2px rgba(0,0,0,0.5)'
                                   }}
@@ -798,7 +682,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                   textAnchor="middle"
                                   className="fill-slate-800 font-semibold pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(8, (cluster.isCluster ? 9 : 10) * zoomFactor),
+                                    fontSize: Math.max(6, (cluster.isCluster ? 9 : 10) * textZoomFactor),
                                     fontWeight: '600',
                                     textShadow: '0 1px 3px rgba(255,255,255,0.9)'
                                   }}
@@ -814,7 +698,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                   textAnchor="middle"
                                   className="fill-slate-600 font-medium pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(7, 8 * zoomFactor),
+                                    fontSize: Math.max(5, 8 * textZoomFactor),
                                     textShadow: '0 1px 2px rgba(255,255,255,0.9)'
                                   }}
                                 >
