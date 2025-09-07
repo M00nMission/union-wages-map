@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { UnionModal } from '@/components/union-modal'
 import { UnionFilters } from '@/components/union-filters'
-import { MapPin, DollarSign, Users, Building2, TrendingUp } from 'lucide-react'
+import { MapPin, DollarSign, Users, Building2, TrendingUp, ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react'
 import {
   ComposableMap,
   Geographies,
@@ -53,6 +53,10 @@ export function UnionMap({ unions }: UnionMapProps) {
     center: [-98.5795, 39.8283] as [number, number] // Center of USA
   })
   const [selectedState, setSelectedState] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
+  const [isMapInViewport, setIsMapInViewport] = useState(false)
+  const [mapRef, setMapRef] = useState<HTMLDivElement | null>(null)
   const [filters, setFilters] = useState<UnionFiltersType>({
     trade: undefined,
     state: undefined,
@@ -65,6 +69,89 @@ export function UnionMap({ unions }: UnionMapProps) {
     setIsClient(true)
   }, [])
 
+  // Intersection Observer to detect when map is in viewport
+  useEffect(() => {
+    if (!mapRef || !isClient) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsMapInViewport(entry.isIntersecting)
+        })
+      },
+      {
+        threshold: 0.1, // Trigger when 10% of map is visible
+        rootMargin: '0px'
+      }
+    )
+
+    observer.observe(mapRef)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [mapRef, isClient])
+
+  // Keyboard shortcuts for zoom controls - only when map is in viewport
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when map is in viewport and not typing in input fields
+      if (!isMapInViewport || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      switch (event.key) {
+        case '+':
+        case '=':
+          event.preventDefault()
+          zoomIn()
+          break
+        case '-':
+          event.preventDefault()
+          zoomOut()
+          break
+        case '0':
+          event.preventDefault()
+          zoomToFit()
+          break
+        case 'Escape':
+          event.preventDefault()
+          setSelectedUnion(null)
+          setHoveredUnion(null)
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMapInViewport])
+
+  // Global wheel event listener for zoom when map is in viewport
+  useEffect(() => {
+    const handleWheel = (event: WheelEvent) => {
+      // Only handle wheel events when map is in viewport
+      if (!isMapInViewport) return
+
+      // Check if the wheel event is over the map component
+      if (mapRef && mapRef.contains(event.target as Node)) {
+        event.preventDefault()
+        
+        // Zoom towards the center of the map
+        const delta = event.deltaY > 0 ? 0.9 : 1.1
+        const newZoom = Math.max(0.8, Math.min(4, mapPosition.zoom * delta))
+        
+        setMapPosition(prev => ({
+          zoom: newZoom,
+          center: prev.center
+        }))
+      }
+    }
+
+    // Use passive: false to allow preventDefault
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => window.removeEventListener('wheel', handleWheel)
+  }, [isMapInViewport, mapRef, mapPosition.zoom])
+
   // Auto-zoom to selected state when filter changes
   useEffect(() => {
     if (filters.state && filters.state !== selectedState) {
@@ -76,7 +163,45 @@ export function UnionMap({ unions }: UnionMapProps) {
     }
   }, [filters.state, selectedState])
 
-  // Function to zoom to a specific state
+
+  // Function to reset map to default view
+  const resetMapView = () => {
+    setMapPosition({
+      zoom: 1,
+      center: [-98.5795, 39.8283] // Center of USA
+    })
+  }
+
+  // Handle map position changes
+  const handleMapMove = (position: { coordinates: [number, number]; zoom: number }) => {
+    setMapPosition({
+      zoom: position.zoom,
+      center: position.coordinates
+    })
+  }
+
+  // Zoom control functions with smooth transitions
+  const zoomIn = () => {
+    setMapPosition(prev => ({
+      zoom: Math.min(prev.zoom * 1.3, 4),
+      center: prev.center
+    }))
+  }
+
+  const zoomOut = () => {
+    setMapPosition(prev => ({
+      zoom: Math.max(prev.zoom / 1.3, 0.8),
+      center: prev.center
+    }))
+  }
+
+  const zoomToFit = () => {
+    setMapPosition({
+      zoom: 1,
+      center: [-98.5795, 39.8283] // Center of USA
+    })
+  }
+
   const zoomToState = (stateCode: string) => {
     // State center coordinates (approximate)
     const stateCenters: Record<string, [number, number]> = {
@@ -108,21 +233,127 @@ export function UnionMap({ unions }: UnionMapProps) {
     }
   }
 
-  // Function to reset map to default view
-  const resetMapView = () => {
+  // Quick zoom presets
+  const zoomPresets = [
+    { name: 'Country', zoom: 1, center: [-98.5795, 39.8283] as [number, number] },
+    { name: 'Region', zoom: 2, center: [-98.5795, 39.8283] as [number, number] },
+    { name: 'State', zoom: 3.5, center: [-98.5795, 39.8283] as [number, number] },
+    { name: 'City', zoom: 4, center: [-98.5795, 39.8283] as [number, number] }
+  ]
+
+  const applyZoomPreset = (preset: typeof zoomPresets[0]) => {
     setMapPosition({
-      zoom: 1,
-      center: [-98.5795, 39.8283] // Center of USA
+      zoom: preset.zoom,
+      center: preset.center
     })
   }
 
-  // Handle map position changes
-  const handleMapMove = (position: { coordinates: [number, number]; zoom: number }) => {
-    setMapPosition({
-      zoom: position.zoom,
-      center: position.coordinates
-    })
+  // Enhanced drag handling for both desktop and mobile
+  const handlePointerDown = (event: React.PointerEvent) => {
+    // Don't start drag if clicking on interactive elements
+    const target = event.target as HTMLElement
+    if (target.closest('button') || target.closest('[role="button"]') || target.closest('a') || target.closest('svg')) {
+      return
+    }
+
+    event.preventDefault()
+    setIsDragging(true)
+    setDragStart({ x: event.clientX, y: event.clientY })
+    
+    // Store initial map position for smooth dragging
+    const initialCenter = mapPosition.center
+    const initialZoom = mapPosition.zoom
+    
+    // Add global event listeners for smooth dragging
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!dragStart) return
+      
+      const deltaX = e.clientX - dragStart.x
+      const deltaY = e.clientY - dragStart.y
+      
+      // More responsive sensitivity for trackpad
+      const sensitivity = 1.5 / initialZoom
+      const newCenter: [number, number] = [
+        initialCenter[0] - (deltaX * sensitivity),
+        initialCenter[1] + (deltaY * sensitivity)
+      ]
+      
+      setMapPosition(prev => ({
+        ...prev,
+        center: newCenter
+      }))
+    }
+
+    const handlePointerUp = () => {
+      setIsDragging(false)
+      setDragStart(null)
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('pointerup', handlePointerUp)
+    }
+
+    document.addEventListener('pointermove', handlePointerMove)
+    document.addEventListener('pointerup', handlePointerUp)
   }
+
+  // Mouse event fallback for better desktop compatibility
+  const handleMouseDown = (event: React.MouseEvent) => {
+    // Only handle left mouse button
+    if (event.button !== 0) return
+    
+    // Don't start drag if clicking on interactive elements
+    const target = event.target as HTMLElement
+    if (target.closest('button') || target.closest('[role="button"]') || target.closest('a') || target.closest('svg')) {
+      return
+    }
+
+    event.preventDefault()
+    setIsDragging(true)
+    setDragStart({ x: event.clientX, y: event.clientY })
+    
+    // Store initial map position for smooth dragging
+    const initialCenter = mapPosition.center
+    const initialZoom = mapPosition.zoom
+    
+    // Add global event listeners for smooth dragging
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStart) return
+      
+      const deltaX = e.clientX - dragStart.x
+      const deltaY = e.clientY - dragStart.y
+      
+      // Responsive sensitivity for mouse
+      const sensitivity = 1.2 / initialZoom
+      const newCenter: [number, number] = [
+        initialCenter[0] - (deltaX * sensitivity),
+        initialCenter[1] + (deltaY * sensitivity)
+      ]
+      
+      setMapPosition(prev => ({
+        ...prev,
+        center: newCenter
+      }))
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      setDragStart(null)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  // Prevent default click behavior on map to ensure drag works
+  const handleMapClick = (event: React.MouseEvent) => {
+    // Only prevent default if we're not clicking on interactive elements
+    const target = event.target as HTMLElement
+    if (!target.closest('button') && !target.closest('[role="button"]') && !target.closest('a') && !target.closest('svg')) {
+      event.preventDefault()
+    }
+  }
+
 
   // Function to handle state click
   const handleStateClick = (geo: { properties: { STUSPS: string } }) => {
@@ -144,6 +375,83 @@ export function UnionMap({ unions }: UnionMapProps) {
       return true
     })
   }, [unions, filters])
+
+  // Clustering logic for nearby unions
+  const clusteredUnions = useMemo(() => {
+    if (mapPosition.zoom < 1.5) {
+      // At low zoom levels, cluster nearby unions
+      const clusters: Array<{
+        id: string
+        unions: Union[]
+        centerLat: number
+        centerLng: number
+        avgWage: number
+        totalMembers: number
+        isCluster: boolean
+      }> = []
+      
+      const processed = new Set<number>()
+      const clusterRadius = 0.5 // degrees
+      
+      filteredUnions.forEach(union => {
+        if (processed.has(union.id)) return
+        
+        const nearbyUnions = filteredUnions.filter(other => {
+          if (processed.has(other.id) || other.id === union.id) return false
+          const distance = Math.sqrt(
+            Math.pow(union.lat - other.lat, 2) + Math.pow(union.lng - other.lng, 2)
+          )
+          return distance < clusterRadius
+        })
+        
+        if (nearbyUnions.length > 0) {
+          // Create cluster
+          const clusterUnions = [union, ...nearbyUnions]
+          const centerLat = clusterUnions.reduce((sum, u) => sum + u.lat, 0) / clusterUnions.length
+          const centerLng = clusterUnions.reduce((sum, u) => sum + u.lng, 0) / clusterUnions.length
+          const avgWage = clusterUnions.reduce((sum, u) => sum + u.baseWage, 0) / clusterUnions.length
+          const totalMembers = clusterUnions.reduce((sum, u) => sum + u.members, 0)
+          
+          clusters.push({
+            id: `cluster-${union.id}`,
+            unions: clusterUnions,
+            centerLat,
+            centerLng,
+            avgWage,
+            totalMembers,
+            isCluster: true
+          })
+          
+          clusterUnions.forEach(u => processed.add(u.id))
+        } else {
+          // Single union
+          clusters.push({
+            id: `single-${union.id}`,
+            unions: [union],
+            centerLat: union.lat,
+            centerLng: union.lng,
+            avgWage: union.baseWage,
+            totalMembers: union.members,
+            isCluster: false
+          })
+          processed.add(union.id)
+        }
+      })
+      
+      return clusters
+    } else {
+      // At high zoom levels, show individual unions
+      return filteredUnions.map(union => ({
+        id: `single-${union.id}`,
+        unions: [union],
+        centerLat: union.lat,
+        centerLng: union.lng,
+        avgWage: union.baseWage,
+        totalMembers: union.members,
+        isCluster: false
+      }))
+    }
+  }, [filteredUnions, mapPosition.zoom])
 
   // Get color based on wage level
   const getWageColor = (baseWage: number) => {
@@ -171,6 +479,20 @@ export function UnionMap({ unions }: UnionMapProps) {
       avgBenefits: Number(avgBenefits.toFixed(2))
     }
   }, [filteredUnions])
+
+  // Calculate clustering statistics
+  const clusteringStats = useMemo(() => {
+    const totalClusters = clusteredUnions.length
+    const clusteredUnionsCount = clusteredUnions.filter(c => c.isCluster).length
+    const singleUnionsCount = clusteredUnions.filter(c => !c.isCluster).length
+    
+    return {
+      totalClusters,
+      clusteredUnionsCount,
+      singleUnionsCount,
+      clusteringActive: mapPosition.zoom < 1.5
+    }
+  }, [clusteredUnions, mapPosition.zoom])
 
   return (
     <div className="space-y-6">
@@ -218,7 +540,129 @@ export function UnionMap({ unions }: UnionMapProps) {
             </div>
           )}
           {isClient && (
-            <div className="w-full h-[600px] bg-slate-50 rounded-lg border overflow-hidden relative touch-pan-x touch-pan-y touch-pinch-zoom cursor-grab active:cursor-grabbing map-container">
+              <div 
+                ref={setMapRef}
+                className={`w-full h-[600px] bg-slate-50 rounded-lg border overflow-hidden relative touch-pan-x touch-pan-y touch-pinch-zoom map-container select-none transition-all duration-300 ${
+                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                } ${isMapInViewport ? 'ring-2 ring-blue-200' : ''}`}
+                onPointerDown={handlePointerDown}
+                onMouseDown={handleMouseDown}
+                onClick={handleMapClick}
+                style={{
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  MozUserSelect: 'none',
+                  msUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'pan-x pan-y pinch-zoom' // Allow touch gestures but control them
+                }}
+              >
+                {/* Reset Button - Prominent */}
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+                  <Button
+                    onClick={zoomToFit}
+                    className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 px-4 py-2"
+                    variant="outline"
+                  >
+                    <RotateCcw size={16} className="mr-2" />
+                    <span className="font-medium">Reset View</span>
+                  </Button>
+                </div>
+
+                {/* Unified Zoom Controls */}
+                <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                  {/* Zoom Controls - Same for all devices */}
+                  <div className="flex gap-1 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg p-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={zoomIn}
+                      disabled={mapPosition.zoom >= 4}
+                      className="h-10 w-10 p-0 touch-manipulation"
+                    >
+                      <ZoomIn size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={zoomOut}
+                      disabled={mapPosition.zoom <= 0.8}
+                      className="h-10 w-10 p-0 touch-manipulation"
+                    >
+                      <ZoomOut size={16} />
+                    </Button>
+                  </div>
+
+                  {/* Zoom Level Indicator */}
+                  <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600 shadow-lg">
+                    <div className="font-medium">Zoom: {Math.round(mapPosition.zoom * 100)}%</div>
+                    <div className="text-slate-500">
+                      {mapPosition.zoom < 1.5 ? 'Clustered' : 'Individual'}
+                    </div>
+                    {isMapInViewport && (
+                      <div className="text-green-600 font-medium mt-1">
+                        🎯 Active
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Zoom Presets */}
+                <div className="absolute bottom-4 right-4 z-20">
+                  <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg p-2">
+                    <div className="text-xs font-medium text-slate-700 mb-2">Quick Views</div>
+                    <div className="flex flex-col gap-1">
+                      {zoomPresets.map((preset, index) => (
+                        <Button
+                          key={preset.name}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => applyZoomPreset(preset)}
+                          className={`h-6 text-xs justify-start touch-manipulation ${
+                            Math.abs(mapPosition.zoom - preset.zoom) < 0.1 
+                              ? 'bg-blue-100 text-blue-700' 
+                              : 'hover:bg-slate-100'
+                          }`}
+                        >
+                          {preset.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Unified Gesture Hint */}
+                <div className="absolute bottom-4 left-4 z-20">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 shadow-lg">
+                    <div className="font-medium mb-1">🎯 Touch Gestures</div>
+                    <div className="text-blue-600">
+                      <div>• Pinch to zoom</div>
+                      <div>• Drag to pan smoothly</div>
+                      <div>• Tap markers for details</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Drag Indicator - Subtle */}
+                {isDragging && (
+                  <div className="absolute top-2 right-2 z-30 pointer-events-none">
+                    <div className="bg-slate-800/90 text-white px-2 py-1 rounded text-xs font-medium shadow-lg">
+                      Dragging
+                    </div>
+                  </div>
+                )}
+
+                {/* Debug Info - Remove in production */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="absolute bottom-2 left-2 z-30 pointer-events-none">
+                    <div className="bg-black/80 text-white px-2 py-1 rounded text-xs font-mono shadow-lg">
+                      <div>Drag: {isDragging ? 'YES' : 'NO'}</div>
+                      <div>Viewport: {isMapInViewport ? 'YES' : 'NO'}</div>
+                      <div>Zoom: {Math.round(mapPosition.zoom * 100)}%</div>
+                    </div>
+                  </div>
+                )}
               <ComposableMap
                 projection="geoAlbersUsa"
                 projectionConfig={{
@@ -236,6 +680,16 @@ export function UnionMap({ unions }: UnionMapProps) {
                   onMoveEnd={handleMapMove}
                   minZoom={0.8}
                   maxZoom={4}
+                  translateExtent={[[-300, -300], [300, 300]]}
+                  zoomExtent={[0.8, 4]}
+                  filterZoomEvent={(event) => {
+                    // Allow pinch-to-zoom and wheel events when map is in viewport
+                    return event.type === 'touchstart' || event.type === 'touchmove' || (event.type === 'wheel' && isMapInViewport)
+                  }}
+                  filterPanEvent={(event) => {
+                    // Allow some panning for trackpad gestures but prioritize our custom drag
+                    return event.type === 'touchstart' || event.type === 'touchmove'
+                  }}
                 >
                   <Geographies geography={geoUrl}>
                     {({ geographies }) =>
@@ -268,20 +722,25 @@ export function UnionMap({ unions }: UnionMapProps) {
                     }
                   </Geographies>
                   
-                  {/* Union Location Markers */}
-                  {filteredUnions.map(union => {
-                    const isHovered = hoveredUnion === union.id
-                    const isSelected = selectedUnion?.id === union.id
-                    const color = getWageColor(union.baseWage)
+                  {/* Union Location Markers - Now with clustering */}
+                  {clusteredUnions.map(cluster => {
+                    const primaryUnion = cluster.unions[0]
+                    const isHovered = hoveredUnion === primaryUnion.id
+                    const isSelected = selectedUnion?.id === primaryUnion.id
+                    const color = getWageColor(cluster.avgWage)
                     
-                    // Fixed marker sizes for better consistency
-                    const baseMarkerSize = 6
-                    const hoveredMarkerSize = 8
-                    const selectedMarkerSize = 10
+                    // Dynamic marker sizes based on zoom and cluster size - smaller for better readability
+                    const zoomFactor = Math.max(0.5, 1 / mapPosition.zoom) // Smaller markers at higher zoom
+                    const baseMarkerSize = cluster.isCluster 
+                      ? Math.min((6 + cluster.unions.length * 0.3) * zoomFactor, 8) 
+                      : Math.max(3, 4 * zoomFactor)
+                    const hoveredMarkerSize = baseMarkerSize + 1
+                    const selectedMarkerSize = baseMarkerSize + 2
                     
-                    // Smart label visibility based on zoom and density
-                    const showWageLabel = mapPosition.zoom > 1.5
-                    const showCityLabel = mapPosition.zoom > 2.0
+                    // Improved label visibility based on zoom and density - more conservative
+                    const showWageLabel = mapPosition.zoom > 2.2
+                    const showCityLabel = mapPosition.zoom > 3.0
+                    const showClusterCount = cluster.isCluster && mapPosition.zoom > 1.5
                     
                     // Calculate marker size based on state
                     let markerSize = baseMarkerSize
@@ -289,17 +748,17 @@ export function UnionMap({ unions }: UnionMapProps) {
                     else if (isHovered) markerSize = hoveredMarkerSize
                     
                     return (
-                      <HoverCard key={union.id}>
+                      <HoverCard key={cluster.id}>
                         <HoverCardTrigger asChild>
-                          <Marker coordinates={[union.lng, union.lat]}>
+                          <Marker coordinates={[cluster.centerLng, cluster.centerLat]}>
                             <g className="cursor-pointer">
                               {/* Background circle for better text readability */}
-                              {showWageLabel && (
+                              {(showWageLabel || showClusterCount) && (
                                 <circle
-                                  r={markerSize + 8}
-                                  fill="rgba(255, 255, 255, 0.9)"
-                                  stroke="rgba(255, 255, 255, 0.8)"
-                                  strokeWidth={1}
+                                  r={markerSize + 10}
+                                  fill="rgba(255, 255, 255, 0.95)"
+                                  stroke="rgba(255, 255, 255, 0.9)"
+                                  strokeWidth={1.5}
                                   className="pointer-events-none"
                                 />
                               )}
@@ -309,42 +768,71 @@ export function UnionMap({ unions }: UnionMapProps) {
                                 r={markerSize}
                                 fill={color}
                                 stroke="white"
-                                strokeWidth={2}
-                                className="transition-all duration-200 drop-shadow-sm hover:drop-shadow-md"
-                                onMouseEnter={() => setHoveredUnion(union.id)}
+                                strokeWidth={cluster.isCluster ? 3 : 2}
+                                className="transition-all duration-200 drop-shadow-md hover:drop-shadow-lg"
+                                onMouseEnter={() => setHoveredUnion(primaryUnion.id)}
                                 onMouseLeave={() => setHoveredUnion(null)}
-                                onClick={() => setSelectedUnion(union)}
+                                onClick={() => setSelectedUnion(primaryUnion)}
                               />
                               
-                              {/* Wage Label - Clean, readable positioning */}
+                              {/* Cluster count indicator */}
+                              {showClusterCount && cluster.isCluster && (
+                                <text
+                                  y={markerSize * 0.3}
+                                  textAnchor="middle"
+                                  className="fill-white font-bold pointer-events-none select-none"
+                                  style={{ 
+                                    fontSize: Math.min(markerSize * 0.8, 10),
+                                    fontWeight: '700',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                                  }}
+                                >
+                                  {cluster.unions.length}
+                                </text>
+                              )}
+                              
+                              {/* Wage Label - Clean, readable positioning with zoom-based sizing */}
                               {showWageLabel && (
                                 <text
                                   y={-markerSize - 8}
                                   textAnchor="middle"
                                   className="fill-slate-800 font-semibold pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: '12px',
+                                    fontSize: Math.max(8, (cluster.isCluster ? 9 : 10) * zoomFactor),
                                     fontWeight: '600',
-                                    textShadow: '0 1px 2px rgba(255,255,255,0.8)'
+                                    textShadow: '0 1px 3px rgba(255,255,255,0.9)'
                                   }}
                                 >
-                                  {formatCurrency(union.baseWage)}/hr
+                                  {formatCurrency(cluster.avgWage)}/hr
                                 </text>
                               )}
                               
-                              {/* City Label - Below marker for clarity */}
-                              {showCityLabel && (
+                              {/* City Label - Below marker for clarity with zoom-based sizing */}
+                              {showCityLabel && !cluster.isCluster && (
                                 <text
-                                  y={markerSize + 12}
+                                  y={markerSize + 10}
                                   textAnchor="middle"
                                   className="fill-slate-600 font-medium pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: '11px',
-                                    textShadow: '0 1px 2px rgba(255,255,255,0.8)'
+                                    fontSize: Math.max(7, 8 * zoomFactor),
+                                    textShadow: '0 1px 2px rgba(255,255,255,0.9)'
                                   }}
                                 >
-                                  {union.city}
+                                  {primaryUnion.city}
                                 </text>
+                              )}
+                              
+                              {/* Cluster area indicator */}
+                              {cluster.isCluster && mapPosition.zoom > 2.0 && (
+                                <circle
+                                  r={markerSize + 15}
+                                  fill="none"
+                                  stroke={color}
+                                  strokeWidth={1}
+                                  strokeDasharray="3,3"
+                                  opacity={0.4}
+                                  className="pointer-events-none"
+                                />
                               )}
                             </g>
                           </Marker>
@@ -352,24 +840,67 @@ export function UnionMap({ unions }: UnionMapProps) {
                         
                         <HoverCardContent className="w-80">
                           <div className="space-y-2">
+                            {cluster.isCluster ? (
+                              // Cluster hover card
+                              <div>
+                                <div className="flex items-start gap-3 mb-3">
+                                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                    {cluster.unions.length}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-slate-900">
+                                      {cluster.unions.length} Unions in Area
+                                    </h4>
+                                    <p className="text-sm text-slate-600">
+                                      Average wage: {formatCurrency(cluster.avgWage)}/hr
+                                    </p>
+                                    <div className="flex items-center gap-4 mt-1">
+                                      <span className="text-sm font-medium text-green-600">
+                                        {cluster.totalMembers.toLocaleString()} total members
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-1 max-h-32 overflow-y-auto">
+                                  {cluster.unions.slice(0, 5).map(union => (
+                                    <div key={union.id} className="flex justify-between items-center text-xs py-1 border-b border-slate-100 last:border-b-0">
+                                      <span className="font-medium">{union.shortName}</span>
+                                      <span className="text-green-600">{formatCurrency(union.baseWage)}/hr</span>
+                                    </div>
+                                  ))}
+                                  {cluster.unions.length > 5 && (
+                                    <div className="text-xs text-slate-500 text-center py-1">
+                                      +{cluster.unions.length - 5} more unions
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <Badge variant="outline" className="text-xs mt-2">
+                                  {cluster.unions[0].trade}
+                                </Badge>
+                              </div>
+                            ) : (
+                              // Single union hover card
+                              <div>
                             <div className="flex items-start gap-3">
                               <img 
-                                src={getUnionLogoPath(union)} 
-                                alt={union.name}
+                                    src={getUnionLogoPath(primaryUnion)} 
+                                    alt={primaryUnion.name}
                                 className="w-12 h-12 rounded-lg object-cover bg-slate-100"
                                 onError={(e) => {
                                   e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTYgMTZIMzJWMzJIMTZWMTZaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'
                                 }}
                               />
                               <div>
-                                <h4 className="font-semibold text-slate-900">{union.shortName}</h4>
-                                <p className="text-sm text-slate-600">{union.city}, {union.state}</p>
+                                    <h4 className="font-semibold text-slate-900">{primaryUnion.shortName}</h4>
+                                    <p className="text-sm text-slate-600">{primaryUnion.city}, {primaryUnion.state}</p>
                                 <div className="flex items-center gap-4 mt-1">
                                   <span className="text-sm font-medium text-green-600">
-                                    {formatCurrency(union.baseWage)}/hr
+                                        {formatCurrency(primaryUnion.baseWage)}/hr
                                   </span>
                                   <span className="text-xs text-slate-500">
-                                    {union.members.toLocaleString()} members
+                                        {primaryUnion.members.toLocaleString()} members
                                   </span>
                                 </div>
                               </div>
@@ -378,17 +909,19 @@ export function UnionMap({ unions }: UnionMapProps) {
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
                                 <span className="text-slate-500">Benefits:</span>
-                                <span className="font-medium ml-1">{formatCurrency(union.fringeBenefits)}/hr</span>
+                                    <span className="font-medium ml-1">{formatCurrency(primaryUnion.fringeBenefits)}/hr</span>
                               </div>
                               <div>
                                 <span className="text-slate-500">Total:</span>
-                                <span className="font-medium ml-1">{formatCurrency(union.totalPackage)}/hr</span>
+                                    <span className="font-medium ml-1">{formatCurrency(primaryUnion.totalPackage)}/hr</span>
                               </div>
                             </div>
                             
                             <Badge variant="outline" className="text-xs">
-                              {union.trade}
+                                  {primaryUnion.trade}
                             </Badge>
+                              </div>
+                            )}
                           </div>
                         </HoverCardContent>
                       </HoverCard>
@@ -402,11 +935,23 @@ export function UnionMap({ unions }: UnionMapProps) {
                   <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 shadow-lg">
                     <div className="font-medium mb-2 text-slate-700">🗺️ Map Controls</div>
                     <div className="space-y-1 text-slate-500">
-                      <div>• Pinch fingers to zoom in/out</div>
-                      <div>• Drag to pan around</div>
-                      <div>• Mouse wheel to zoom (desktop)</div>
+                      <div className="font-medium text-slate-600">All Devices:</div>
+                      <div>• Drag to pan smoothly</div>
+                      <div>• Pinch to zoom (touch devices)</div>
+                      <div>• Mouse wheel to zoom (when map is visible)</div>
+                      <div>• Use zoom buttons</div>
+                      <div>• +/- keys to zoom (when map is visible)</div>
+                      <div>• 0 key to reset view</div>
+                      <div>• ESC to clear selection</div>
+                      <div className="font-medium text-slate-600 mt-2">General:</div>
                       <div>• Click states to zoom in</div>
                       <div>• Hover over markers for details</div>
+                      {isMapInViewport && (
+                        <div className="text-green-600 font-medium">• Map is active - zoom controls enabled</div>
+                      )}
+                      {clusteringStats.clusteringActive && (
+                        <div className="text-blue-600 font-medium">• Zoom in to see individual unions</div>
+                      )}
                     </div>
                   </div>
                   
@@ -416,6 +961,11 @@ export function UnionMap({ unions }: UnionMapProps) {
                     <div className="text-green-600">
                       {filteredUnions.length} unions • {new Set(filteredUnions.map(u => u.state)).size} states
                     </div>
+                    {clusteringStats.clusteringActive && (
+                      <div className="text-green-600 mt-1">
+                        {clusteringStats.clusteredUnionsCount} clusters • {clusteringStats.singleUnionsCount} individual
+                      </div>
+                    )}
                   </div>
                   
                   {selectedState && (
@@ -459,6 +1009,11 @@ export function UnionMap({ unions }: UnionMapProps) {
           <div className="text-center mb-3">
             <h3 className="text-sm font-semibold text-slate-700 mb-2">Wage Level Legend</h3>
             <p className="text-xs text-slate-500">Click on markers to see detailed information</p>
+            {clusteringStats.clusteringActive && (
+              <p className="text-xs text-blue-600 font-medium mt-1">
+                🔗 Clustering active - zoom in to see individual unions
+              </p>
+            )}
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
