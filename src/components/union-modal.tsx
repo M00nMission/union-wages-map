@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { Union, UnionTrade } from '@/types/union'
 import { 
   Dialog, 
@@ -64,9 +65,11 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
       <DialogContent className="w-[95vw] max-w-2xl md:max-w-4xl max-h-[85vh] md:max-h-[90vh] overflow-y-auto mx-2">
         <DialogHeader>
           <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
-            <img 
+            <Image 
               src={getUnionLogoPath(union)} 
               alt={union.name}
+              width={64}
+              height={64}
               className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover bg-slate-100 flex-shrink-0"
               onError={(e) => {
                 e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMjAgMjBINDRWNDRIMjBWMjBaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'

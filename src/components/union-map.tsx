@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
+import Image from 'next/image'
 import { Union, UnionFilters as UnionFiltersType, UnionTrade } from '@/types/union'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -56,6 +57,7 @@ export function UnionMap({ unions }: UnionMapProps) {
   const [isMapInViewport, setIsMapInViewport] = useState(false)
   const [mapRef, setMapRef] = useState<HTMLDivElement | null>(null)
   const [isHovering, setIsHovering] = useState(false)
+  const [isPanning, setIsPanning] = useState(false)
   const [filters, setFilters] = useState<UnionFiltersType>({
     trade: undefined,
     state: undefined,
@@ -259,6 +261,27 @@ export function UnionMap({ unions }: UnionMapProps) {
     setIsHovering(false)
   }
 
+  // Handle panning state for cursor management
+  const handleMapMouseDown = (event: React.MouseEvent) => {
+    // Only handle left mouse button
+    if (event.button !== 0) return
+    
+    // Don't start panning if clicking on interactive elements
+    const target = event.target as HTMLElement
+    if (target.closest('button') || target.closest('[role="button"]') || target.closest('a') || target.closest('svg')) {
+      return
+    }
+
+    setIsPanning(true)
+    
+    const handleMouseUp = () => {
+      setIsPanning(false)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
 
 
 
@@ -455,6 +478,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                 }`}
                 onMouseEnter={handleMapContainerMouseEnter}
                 onMouseLeave={handleMapContainerMouseLeave}
+                onMouseDown={handleMapMouseDown}
                 style={{
                   userSelect: 'none',
                   WebkitUserSelect: 'none',
@@ -463,7 +487,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                   WebkitTouchCallout: 'none',
                   WebkitTapHighlightColor: 'transparent',
                   touchAction: 'pan-x pan-y pinch-zoom', // Allow touch gestures but control them
-                  cursor: isHovering ? 'grab' : 'default'
+                  cursor: isPanning ? 'grab' : (isHovering ? 'pointer' : 'default')
                 }}
               >
                 {/* Reset Button - Prominent */}
@@ -612,19 +636,19 @@ export function UnionMap({ unions }: UnionMapProps) {
                     const isSelected = selectedUnion?.id === primaryUnion.id
                     const color = getWageColor(cluster.avgWage)
                     
-                    // Dynamic marker sizes based on zoom and cluster size - smaller for better readability
-                    const zoomFactor = Math.max(0.3, 1 / mapPosition.zoom) // More aggressive scaling for text
-                    const textZoomFactor = Math.max(0.2, 1 / (mapPosition.zoom * 1.5)) // Even more aggressive for text
+                    // Dynamic marker sizes based on zoom and cluster size - much more aggressive scaling
+                    const zoomFactor = Math.max(0.15, 1 / (mapPosition.zoom * 1.2)) // Much more aggressive scaling for dots
+                    const textZoomFactor = Math.max(0.1, 1 / (mapPosition.zoom * 2.5)) // Extremely aggressive for text
                     const baseMarkerSize = cluster.isCluster 
-                      ? Math.min((6 + cluster.unions.length * 0.3) * zoomFactor, 8) 
-                      : Math.max(3, 4 * zoomFactor)
+                      ? Math.min((6 + cluster.unions.length * 0.3) * zoomFactor, 6) 
+                      : Math.max(1.5, 3 * zoomFactor)
                     const hoveredMarkerSize = baseMarkerSize + 1
                     const selectedMarkerSize = baseMarkerSize + 2
                     
-                    // Improved label visibility based on zoom and density - more conservative
-                    const showWageLabel = mapPosition.zoom > 2.5
-                    const showCityLabel = mapPosition.zoom > 3.5
-                    const showClusterCount = cluster.isCluster && mapPosition.zoom > 1.8
+                    // Improved label visibility based on zoom and density - much more conservative
+                    const showWageLabel = mapPosition.zoom > 3.0
+                    const showCityLabel = mapPosition.zoom > 4.0
+                    const showClusterCount = cluster.isCluster && mapPosition.zoom > 2.2
                     
                     // Calculate marker size based on state
                     let markerSize = baseMarkerSize
@@ -636,16 +660,6 @@ export function UnionMap({ unions }: UnionMapProps) {
                         <HoverCardTrigger asChild>
                           <Marker coordinates={[cluster.centerLng, cluster.centerLat]}>
                             <g className="cursor-pointer">
-                              {/* Background circle for better text readability */}
-                              {(showWageLabel || showClusterCount) && (
-                                <circle
-                                  r={markerSize + 10}
-                                  fill="rgba(255, 255, 255, 0.95)"
-                                  stroke="rgba(255, 255, 255, 0.9)"
-                                  strokeWidth={1.5}
-                                  className="pointer-events-none"
-                                />
-                              )}
                               
                               {/* Main Marker Circle */}
                               <circle
@@ -666,7 +680,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                   textAnchor="middle"
                                   className="fill-white font-bold pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(6, Math.min(markerSize * 0.8, 10) * textZoomFactor),
+                                    fontSize: Math.max(4, Math.min(markerSize * 0.6, 8) * textZoomFactor),
                                     fontWeight: '700',
                                     textShadow: '0 1px 2px rgba(0,0,0,0.5)'
                                   }}
@@ -682,7 +696,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                   textAnchor="middle"
                                   className="fill-slate-800 font-semibold pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(6, (cluster.isCluster ? 9 : 10) * textZoomFactor),
+                                    fontSize: Math.max(3, (cluster.isCluster ? 7 : 8) * textZoomFactor),
                                     fontWeight: '600',
                                     textShadow: '0 1px 3px rgba(255,255,255,0.9)'
                                   }}
@@ -698,7 +712,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                                   textAnchor="middle"
                                   className="fill-slate-600 font-medium pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(5, 8 * textZoomFactor),
+                                    fontSize: Math.max(2, 6 * textZoomFactor),
                                     textShadow: '0 1px 2px rgba(255,255,255,0.9)'
                                   }}
                                 >
@@ -768,9 +782,11 @@ export function UnionMap({ unions }: UnionMapProps) {
                               // Single union hover card
                               <div>
                             <div className="flex items-start gap-3">
-                              <img 
+                              <Image 
                                     src={getUnionLogoPath(primaryUnion)} 
                                     alt={primaryUnion.name}
+                                width={48}
+                                height={48}
                                 className="w-12 h-12 rounded-lg object-cover bg-slate-100"
                                 onError={(e) => {
                                   e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTYgMTZIMzJWMzJIMTZWMTZaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'
@@ -958,9 +974,11 @@ export function UnionMap({ unions }: UnionMapProps) {
             >
               <CardContent className="p-4">
                 <div className="flex items-start gap-3 mb-3">
-                  <img 
+                  <Image 
                     src={getUnionLogoPath(union)} 
                     alt={union.name}
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-lg object-cover bg-slate-100 flex-shrink-0"
                     onError={(e) => {
                       e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTYgMTZIMzJWMzJIMTZWMTZaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'
