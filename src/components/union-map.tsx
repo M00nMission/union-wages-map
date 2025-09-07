@@ -355,11 +355,15 @@ export function UnionMap({ unions }: UnionMapProps) {
     const avgBenefits = totalUnions > 0
       ? filteredUnions.reduce((sum, union) => sum + union.fringeBenefits, 0) / totalUnions
       : 0
+    const avgTotalPackage = totalUnions > 0
+      ? filteredUnions.reduce((sum, union) => sum + union.totalPackage, 0) / totalUnions
+      : 0
 
     return {
       totalUnions,
       avgWage: Number(avgWage.toFixed(2)),
-      avgBenefits: Number(avgBenefits.toFixed(2))
+      avgBenefits: Number(avgBenefits.toFixed(2)),
+      avgTotalPackage: Number(avgTotalPackage.toFixed(2))
     }
   }, [filteredUnions])
 
@@ -391,6 +395,12 @@ export function UnionMap({ unions }: UnionMapProps) {
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-600">{formatCurrency(statistics.avgBenefits)}/hr</div>
             <div className="text-sm text-slate-600">Avg. Benefits</div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">{formatCurrency(statistics.avgTotalPackage)}/hr</div>
+            <div className="text-sm text-slate-600">Avg. Total Package</div>
           </div>
         </Card>
       </div>
