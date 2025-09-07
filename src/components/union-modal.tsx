@@ -178,11 +178,12 @@ export function UnionModal({ union, open, onOpenChange }: UnionModalProps) {
               <CardContent className="p-4 space-y-4">
                 <h3 className="font-semibold text-slate-900 mb-3">Union Details</h3>
                 
-                <div className="flex items-center gap-2">
+                {/* Membership count temporarily hidden - data accuracy needs verification */}
+                {/* <div className="flex items-center gap-2">
                   <Users className="text-slate-500" size={16} />
                   <span className="text-slate-600">Members:</span>
                   <span className="font-medium">{union.members.toLocaleString()}</span>
-                </div>
+                </div> */}
 
                 <div className="flex items-start gap-2">
                   <MapPin className="text-slate-500 mt-0.5" size={16} />

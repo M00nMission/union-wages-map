@@ -5,14 +5,14 @@ import { Union } from '@/types/union'
 
 // This enables SSR with static generation
 export const metadata: Metadata = {
-  title: 'IBEW Electrician Wages Map - Union Wages Across America',
-  description: 'Explore IBEW electrician wages and fringe benefits by location across the United States.',
-  keywords: 'IBEW, electrician wages, electrical union, fringe benefits, construction wages, trade unions',
+  title: 'Union Wages Map - Union Wages Across America',
+  description: 'Explore Union wages and fringe benefits by location and trade across the United States.',
+  keywords: 'Union, union wages, labor, construction, electrical, plumbing, carpentry, wages, benefits, America, United States',
   openGraph: {
-    title: 'IBEW Electrician Wages Map - Union Wages Across America',
-    description: 'Explore IBEW electrician wages and fringe benefits by location across the United States.',
+    title: 'Union Wages Map - Union Wages Across America',
+    description: 'Explore Union wages and fringe benefits by location and trade across the United States.',
     type: 'website',
-    url: 'https://your-domain.vercel.app',
+    url: 'https://union-wages-map-iota.vercel.app/',
   },
 }
 
@@ -33,21 +33,21 @@ export default async function HomePage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-slate-900 mb-3">
-            IBEW Electrician Wages Across America
+            Union Wages Across America
           </h1>
           <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-            Explore IBEW electrician wages and fringe benefits by location. 
-            Interactive map showing current wage data for electrical workers across the United States.
+            Explore union wages and fringe benefits by location and trade. 
+            Interactive map showing current wage data for Union workers across the United States.
           </p>
         </div>
 
         {/* Map Component */}
         <UnionMap unions={unions} />
         
-        {/* Statistics Section */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Statistics Section - temporarily hidden */}
+        {/* <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Total IBEW Locals</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Total Union Locals</h3>
             <p className="text-3xl font-bold text-blue-600">{unions.length}</p>
           </div>
           
@@ -59,12 +59,26 @@ export default async function HomePage() {
           </div>
           
           <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Avg. Total Package</h3>
+            <p className="text-3xl font-bold text-purple-600">
+              ${(unions.reduce((sum, union) => sum + union.totalPackage, 0) / unions.length).toFixed(2)}/hr
+            </p>
+          </div>
+          
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Avg. Benefits</h3>
+            <p className="text-3xl font-bold text-orange-600">
+              ${(unions.reduce((sum, union) => sum + union.fringeBenefits, 0) / unions.length).toFixed(2)}/hr
+            </p>
+          </div>
+          
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
             <h3 className="text-lg font-semibold text-slate-900 mb-2">Total Members</h3>
             <p className="text-3xl font-bold text-purple-600">
               {unions.reduce((sum, union) => sum + union.members, 0).toLocaleString()}
             </p>
           </div>
-        </div>
+        </div> */}
       </div>
     </main>
   )

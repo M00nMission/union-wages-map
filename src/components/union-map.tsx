@@ -57,8 +57,9 @@ export function UnionMap({ unions }: UnionMapProps) {
   const [mapRef, setMapRef] = useState<HTMLDivElement | null>(null)
   const [isHovering, setIsHovering] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
+  const [hoveredUnionId, setHoveredUnionId] = useState<string | null>(null)
   const [filters, setFilters] = useState<UnionFiltersType>({
-    trade: undefined,
+    trade: UnionTrade.ELECTRICAL,
     state: undefined,
     minWage: undefined,
     maxWage: undefined,
@@ -110,6 +111,21 @@ export function UnionMap({ unions }: UnionMapProps) {
           event.preventDefault()
           setSelectedUnion(null)
           break
+        case '+':
+        case '=':
+          event.preventDefault()
+          setMapPosition(prev => ({
+            zoom: Math.min(50, prev.zoom * 1.3),
+            center: prev.center
+          }))
+          break
+        case '-':
+          event.preventDefault()
+          setMapPosition(prev => ({
+            zoom: Math.max(0.3, prev.zoom * 0.7),
+            center: prev.center
+          }))
+          break
       }
     }
 
@@ -127,9 +143,9 @@ export function UnionMap({ unions }: UnionMapProps) {
       if (mapRef && mapRef.contains(event.target as Node)) {
         event.preventDefault()
         
-        // Zoom towards the center of the map
-        const delta = event.deltaY > 0 ? 0.9 : 1.1
-        const newZoom = Math.max(0.8, Math.min(8, mapPosition.zoom * delta))
+        // Ultra-sensitive zoom for dense area navigation
+        const delta = event.deltaY > 0 ? 0.8 : 1.2
+        const newZoom = Math.max(0.3, Math.min(50, mapPosition.zoom * delta))
         
         setMapPosition(prev => ({
           zoom: newZoom,
@@ -275,7 +291,6 @@ export function UnionMap({ unions }: UnionMapProps) {
       centerLat: number
       centerLng: number
       avgWage: number
-      totalMembers: number
       isCluster: boolean
     }> = []
     
@@ -284,11 +299,12 @@ export function UnionMap({ unions }: UnionMapProps) {
     filteredUnions.forEach(union => {
       if (processedUnions.has(union.id)) return
       
-      // Find unions with identical coordinates (within 0.001 degrees tolerance)
+      // Dynamic clustering based on zoom level - tighter clustering at high zoom
+      const clusteringTolerance = mapPosition.zoom > 10 ? 0.0005 : 0.001
       const nearbyUnions = filteredUnions.filter(otherUnion => 
         !processedUnions.has(otherUnion.id) &&
-        Math.abs(union.lat - otherUnion.lat) < 0.001 &&
-        Math.abs(union.lng - otherUnion.lng) < 0.001
+        Math.abs(union.lat - otherUnion.lat) < clusteringTolerance &&
+        Math.abs(union.lng - otherUnion.lng) < clusteringTolerance
       )
       
       // Mark all nearby unions as processed
@@ -302,13 +318,11 @@ export function UnionMap({ unions }: UnionMapProps) {
           centerLat: union.lat,
           centerLng: union.lng,
           avgWage: union.baseWage,
-          totalMembers: union.members,
           isCluster: false
         })
       } else {
         // Multiple unions at same location - create cluster
         const avgWage = nearbyUnions.reduce((sum, u) => sum + u.baseWage, 0) / nearbyUnions.length
-        const totalMembers = nearbyUnions.reduce((sum, u) => sum + u.members, 0)
         
         clusters.push({
           id: `cluster-${union.id}`,
@@ -316,14 +330,13 @@ export function UnionMap({ unions }: UnionMapProps) {
           centerLat: union.lat,
           centerLng: union.lng,
           avgWage,
-          totalMembers,
           isCluster: true
         })
       }
     })
     
     return clusters
-  }, [filteredUnions])
+  }, [filteredUnions, mapPosition.zoom])
 
   // Get color based on wage level
   const getWageColor = (baseWage: number) => {
@@ -339,7 +352,6 @@ export function UnionMap({ unions }: UnionMapProps) {
     const avgWage = totalUnions > 0 
       ? filteredUnions.reduce((sum, union) => sum + union.baseWage, 0) / totalUnions
       : 0
-    const totalMembers = filteredUnions.reduce((sum, union) => sum + union.members, 0)
     const avgBenefits = totalUnions > 0
       ? filteredUnions.reduce((sum, union) => sum + union.fringeBenefits, 0) / totalUnions
       : 0
@@ -347,7 +359,6 @@ export function UnionMap({ unions }: UnionMapProps) {
     return {
       totalUnions,
       avgWage: Number(avgWage.toFixed(2)),
-      totalMembers,
       avgBenefits: Number(avgBenefits.toFixed(2))
     }
   }, [filteredUnions])
@@ -374,12 +385,6 @@ export function UnionMap({ unions }: UnionMapProps) {
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">{formatCurrency(statistics.avgWage)}/hr</div>
             <div className="text-sm text-slate-600">Avg. Base Wage</div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{statistics.totalMembers.toLocaleString()}</div>
-            <div className="text-sm text-slate-600">Total Members</div>
           </div>
         </Card>
         <Card className="p-4">
@@ -418,8 +423,8 @@ export function UnionMap({ unions }: UnionMapProps) {
                   cursor: isPanning ? 'grab' : (isHovering ? 'pointer' : 'default')
                 }}
               >
-                {/* Reset Button - Prominent */}
-                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+                {/* Reset Button and Zoom Controls */}
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-3">
                   <Button
                     onClick={zoomToFit}
                     className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 px-4 py-2 cursor-pointer"
@@ -428,6 +433,19 @@ export function UnionMap({ unions }: UnionMapProps) {
                     <RotateCcw size={16} className="mr-2" />
                     <span className="font-medium">Reset View</span>
                   </Button>
+                  
+                  {/* Enhanced Zoom Level Indicator */}
+                  <div className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-lg rounded-lg px-3 py-2 text-sm font-medium text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <span>{mapPosition.zoom.toFixed(1)}x</span>
+                      {mapPosition.zoom > 20 && (
+                        <span className="text-xs text-blue-600 font-semibold">DENSE VIEW</span>
+                      )}
+                      {mapPosition.zoom > 30 && (
+                        <span className="text-xs text-purple-600 font-semibold">ULTRA ZOOM</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
 
@@ -446,9 +464,9 @@ export function UnionMap({ unions }: UnionMapProps) {
                   zoom={mapPosition.zoom} 
                   center={mapPosition.center} 
                   onMoveEnd={handleMapMove}
-                  minZoom={0.8}
-                  maxZoom={8}
-                  translateExtent={[[-3000, -3000], [3000, 3000]]}
+                  minZoom={0.3}
+                  maxZoom={50}
+                  translateExtent={[[-8000, -8000], [8000, 8000]]}
                   filterZoomEvent={() => {
                     // Allow all zoom events when map is in viewport
                     return isMapInViewport
@@ -491,65 +509,132 @@ export function UnionMap({ unions }: UnionMapProps) {
                     const primaryUnion = cluster.unions[0]
                     const color = getWageColor(cluster.avgWage)
                     
-                    // Dynamic marker sizes based on zoom and cluster size - balanced scaling
-                    const zoomFactor = Math.max(0.3, 1 / mapPosition.zoom) // More balanced scaling for dots
-                    const textZoomFactor = Math.max(0.2, 1 / (mapPosition.zoom * 1.5)) // More aggressive text scaling
-                    const baseMarkerSize = cluster.isCluster 
-                      ? Math.min((4 + cluster.unions.length * 0.2) * zoomFactor, 5) 
-                      : Math.max(2, 3 * zoomFactor)
+                    // Smart dot scaling for dense area readability
+                    // At high zoom levels, dots get smaller to prevent overlap
+                    const getSmartDotSize = (zoom: number, isCluster: boolean, unionCount: number) => {
+                      if (zoom <= 5) {
+                        // Low zoom: normal sizing
+                        return isCluster ? Math.min(4 + unionCount * 0.2, 6) : 3
+                      } else if (zoom <= 15) {
+                        // Medium zoom: slightly smaller
+                        const baseSize = isCluster ? Math.min(3 + unionCount * 0.15, 4.5) : 2.5
+                        return Math.max(1.5, baseSize * (1 - (zoom - 5) * 0.05))
+                      } else {
+                        // High zoom: much smaller for density
+                        const baseSize = isCluster ? Math.min(2 + unionCount * 0.1, 3) : 1.5
+                        return Math.max(0.8, baseSize * (1 - (zoom - 15) * 0.02))
+                      }
+                    }
                     
-                    // Dynamic label spacing based on zoom level - closer when zoomed in
-                    const labelSpacingFactor = Math.max(0.5, 1 / mapPosition.zoom) // Closer spacing when zoomed in
-                    const wageLabelOffset = baseMarkerSize + (8 * labelSpacingFactor) // Dynamic spacing above dot
-                    const cityLabelOffset = baseMarkerSize + (10 * labelSpacingFactor) // Dynamic spacing below dot
+                    const baseMarkerSize = getSmartDotSize(mapPosition.zoom, cluster.isCluster, cluster.unions.length)
                     
-                    // Improved label visibility based on zoom and density - much more conservative
-                    const showWageLabel = mapPosition.zoom > 3.0
-                    const showCityLabel = mapPosition.zoom > 4.0
+                    // Enhanced text scaling for dense area readability
+                    const textScalingFunction = (zoom: number) => {
+                      if (zoom <= 3) {
+                        // Low zoom: larger text for overview
+                        return 1.2
+                      } else if (zoom <= 10) {
+                        // Medium zoom: gradual reduction
+                        return Math.max(0.3, 1.2 - (zoom - 3) * 0.1)
+                      } else {
+                        // High zoom: very small text to prevent overlap
+                        return Math.max(0.1, 0.3 - (zoom - 10) * 0.02)
+                      }
+                    }
+                    
+                    const textZoomFactor = textScalingFunction(mapPosition.zoom)
+                    
+                    // Calculus-based label spacing: f(z) = a * e^(-b*z) + c
+                    // Creates smooth, natural spacing that gets closer as zoom increases
+                    const labelSpacingFunction = (zoom: number) => {
+                      const a = 8.0   // Initial spacing
+                      const b = 0.2   // Decay rate
+                      const c = 2.0   // Minimum spacing
+                      return Math.max(1.0, a * Math.exp(-b * zoom) + c)
+                    }
+                    
+                    const labelSpacingFactor = labelSpacingFunction(mapPosition.zoom)
+                    const wageLabelOffset = baseMarkerSize + labelSpacingFactor
+                    const cityLabelOffset = baseMarkerSize + (labelSpacingFactor * 1.25)
+                    
+                    // Smart label visibility based on zoom and density
+                    const showWageLabel = mapPosition.zoom > 1.5
+                    const showCityLabel = mapPosition.zoom > 2.0
                     
                     // For clusters, show the city name from the first union
                     const displayCity = cluster.isCluster ? cluster.unions[0].city : primaryUnion.city
+                    
+                    // Check if this union is being hovered
+                    const isHovered = hoveredUnionId === cluster.id
                     
                     return (
                       <HoverCard key={cluster.id}>
                         <HoverCardTrigger asChild>
                           <Marker coordinates={[cluster.centerLng, cluster.centerLat]}>
-                            <g className="cursor-pointer" style={{ zIndex: 1000 }}>
+                            <g 
+                              className="cursor-pointer" 
+                              style={{ zIndex: 1000 }}
+                              onMouseEnter={() => setHoveredUnionId(cluster.id)}
+                              onMouseLeave={() => setHoveredUnionId(null)}
+                            >
                               
-                              {/* Simple Marker Circle */}
+                              {/* Interactive Marker Circle with Hover Effects */}
                               <circle
-                                r={baseMarkerSize}
-                                fill={color}
+                                r={isHovered ? baseMarkerSize * 1.3 : baseMarkerSize}
+                                fill={isHovered ? color : color}
+                                fillOpacity={isHovered ? 0.9 : 0.8}
+                                stroke={isHovered ? '#ffffff' : 'none'}
+                                strokeWidth={isHovered ? 2 : 0}
                                 onClick={() => setSelectedUnion(primaryUnion)}
+                                style={{
+                                  filter: isHovered ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' : 'none'
+                                }}
                               />
                               
+                              {/* Hover Ring Effect */}
+                              {isHovered && (
+                                <circle
+                                  r={baseMarkerSize * 1.8}
+                                  fill="none"
+                                  stroke={color}
+                                  strokeWidth={1}
+                                  strokeOpacity={0.4}
+                                />
+                              )}
                               
-                              {/* Wage Label - Dynamic positioning that gets closer when zoomed in */}
+                              
+                              {/* Wage Label - Calculus-based scaling with hover effects */}
                               {showWageLabel && (
                                 <text
                                   y={-wageLabelOffset}
                                   textAnchor="middle"
                                   className="fill-slate-800 font-semibold pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(4, (cluster.isCluster ? 6 : 8) * textZoomFactor),
-                                    fontWeight: '600',
-                                    zIndex: 1000
+                                    fontSize: Math.max(2, (cluster.isCluster ? 4 : 6) * textZoomFactor),
+                                    fontWeight: isHovered ? '700' : '600',
+                                    zIndex: 1000,
+                                    textShadow: isHovered 
+                                      ? '2px 2px 4px rgba(0,0,0,0.3), 1px 1px 2px rgba(255,255,255,0.9)' 
+                                      : '1px 1px 2px rgba(255,255,255,0.8)'
                                   }}
                                 >
                                   {formatCurrency(cluster.avgWage)}/hr
                                 </text>
                               )}
                               
-                              {/* City Label - Dynamic positioning that gets closer when zoomed in */}
+                              {/* City Label - Calculus-based scaling with hover effects */}
                               {showCityLabel && (
                                 <text
                                   y={cityLabelOffset}
                                   textAnchor="middle"
                                   className="fill-slate-600 font-medium pointer-events-none select-none"
                                   style={{ 
-                                    fontSize: Math.max(3, 6 * textZoomFactor),
+                                    fontSize: Math.max(1.5, 4 * textZoomFactor),
+                                    fontWeight: isHovered ? '600' : '500',
                                     zIndex: 1001,
-                                    textShadow: '1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8), 1px -1px 2px rgba(255,255,255,0.8), -1px 1px 2px rgba(255,255,255,0.8)'
+                                    textShadow: isHovered 
+                                      ? '2px 2px 4px rgba(0,0,0,0.3), 1px 1px 2px rgba(255,255,255,0.9)' 
+                                      : '1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8), 1px -1px 2px rgba(255,255,255,0.8), -1px 1px 2px rgba(255,255,255,0.8)'
                                   }}
                                 >
                                   {displayCity}
@@ -575,11 +660,6 @@ export function UnionMap({ unions }: UnionMapProps) {
                                     <p className="text-sm text-slate-600">
                                       Average wage: {formatCurrency(cluster.avgWage)}/hr
                                     </p>
-                                    <div className="flex items-center gap-4 mt-1">
-                                      <span className="text-sm font-medium text-green-600">
-                                        {cluster.totalMembers.toLocaleString()} total members
-                                      </span>
-                                    </div>
                                   </div>
                                 </div>
                                 
@@ -621,9 +701,6 @@ export function UnionMap({ unions }: UnionMapProps) {
                                 <div className="flex items-center gap-4 mt-1">
                                   <span className="text-sm font-medium text-green-600">
                                         {formatCurrency(primaryUnion.baseWage)}/hr
-                                  </span>
-                                  <span className="text-xs text-slate-500">
-                                        {primaryUnion.members.toLocaleString()} members
                                   </span>
                                 </div>
                               </div>
@@ -776,10 +853,6 @@ export function UnionMap({ unions }: UnionMapProps) {
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100">
                     <span className="text-slate-600 text-sm">Total Package:</span>
                     <span className="font-bold text-purple-600">{formatCurrency(union.totalPackage)}/hr</span>
-                  </div>
-                  <div className="flex items-center gap-1 pt-1">
-                    <Users size={12} className="text-slate-400" />
-                    <span className="text-xs text-slate-500">{union.members.toLocaleString()} members</span>
                   </div>
                 </div>
               </CardContent>
