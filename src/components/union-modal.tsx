@@ -16,7 +16,6 @@ import {
   DollarSign, 
   Heart, 
   Building2, 
-  Users, 
   MapPin, 
   Phone, 
   Mail, 
