@@ -20,10 +20,6 @@ import {
   Phone, 
   Mail, 
   Globe, 
-  Calendar,
-  Shield,
-  GraduationCap,
-  Plane,
   Clock
 } from 'lucide-react'
 

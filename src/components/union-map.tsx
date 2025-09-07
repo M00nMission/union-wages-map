@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { UnionModal } from '@/components/union-modal'
 import { UnionFilters } from '@/components/union-filters'
-import { MapPin, DollarSign, Users, Building2, TrendingUp, ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react'
+import { MapPin, DollarSign, Users, Building2, TrendingUp, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 import {
   ComposableMap,
   Geographies,
@@ -521,7 +521,7 @@ export function UnionMap({ unions }: UnionMapProps) {
                   <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg p-2">
                     <div className="text-xs font-medium text-slate-700 mb-2">Quick Views</div>
                     <div className="flex flex-col gap-1">
-                      {zoomPresets.map((preset, index) => (
+                      {zoomPresets.map((preset) => (
                         <Button
                           key={preset.name}
                           variant="ghost"
@@ -569,9 +569,9 @@ export function UnionMap({ unions }: UnionMapProps) {
                   minZoom={0.8}
                   maxZoom={8}
                   translateExtent={[[-500, -500], [500, 500]]}
-                  filterZoomEvent={(event: any) => {
-                    // Allow pinch-to-zoom and wheel events when map is in viewport
-                    return event.type === 'touchstart' || event.type === 'touchmove' || (event.type === 'wheel' && isMapInViewport)
+                  filterZoomEvent={() => {
+                    // Allow all zoom events when map is in viewport
+                    return isMapInViewport
                   }}
                 >
                   <Geographies geography={geoUrl}>
